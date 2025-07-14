@@ -48,10 +48,10 @@ foreach ($res in $resources) {
             Write-Host "➕ Creating Web Resource: $($res.logicalname)"
             New-CrmRecord -EntityLogicalName webresource `
                           -Fields @{
-                              name           = $res.logicalname
-                              displayname    = $res.displayname
-                              description    = $res.description
-                              content        = $base64
+                              name            = $res.logicalname
+                              displayname     = $res.displayname
+                              description     = $res.description
+                              content         = $base64
                               webresourcetype = [int]$res.type
                           } `
                           -Connection $crmConn
@@ -62,7 +62,7 @@ foreach ($res in $resources) {
     catch {
         Write-Host "❌ Error processing $($res.logicalname): $_"
     }
-}
+}  # <-- This was missing
 
 Write-Host "📢 Publishing all customizations..."
 Publish-CrmAllCustomization -Connection $crmConn
