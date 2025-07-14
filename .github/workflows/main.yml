@@ -2,9 +2,9 @@ name: Deploy Web Resource to DEV (D365 On-Prem)
 
 on:
   push:
-    branches: [dev]
+    branches: [DEV]
   pull_request:
-    branches: [dev]
+    branches: [DEV]
 
 jobs:
   deploy-to-dev:
