@@ -1,4 +1,4 @@
-name: Deploy Web Resource to DEV (D365 On-Prem)
+name: Deploy Web Resources to CRM DEV
 
 on:
   push:
@@ -8,20 +8,26 @@ on:
 
 jobs:
   deploy-to-dev:
-    runs-on: windows-latest
+    runs-on: windows-latest  # Use Windows runner for PowerShell Desktop compatibility
+
+    env:
+      CRM_URL: ${{ secrets.CRM_URL }}
+      CRM_USERNAME: ${{ secrets.CRM_USERNAME }}
+      CRM_PASSWORD: ${{ secrets.CRM_PASSWORD }}
 
     steps:
-    - name: Checkout Code
-      uses: actions/checkout@v3
+      - name: 📦 Checkout Repository
+        uses: actions/checkout@v3
 
-    - name: Install PowerShell Module for D365
-      run: |
-        Install-Module Microsoft.Xrm.Data.PowerShell -Force -Scope CurrentUser
+      - name: 🧰 Install Dynamics 365 PowerShell Module
+        shell: powershell
+        run: |
+          Install-Module Microsoft.Xrm.Data.PowerShell -Force -Scope CurrentUser -AllowClobber
 
-    - name: Deploy Web Resource to DEV
-      shell: pwsh
-      run: |
-        ./scripts/deploy-webresources.ps1 `
-          -CrmUrl "${{ secrets.D365DEV_ENV_URL }}" `
-          -Username "${{ secrets.D365DEV_USERNAME }}" `
-          -Password "${{ secrets.D365DEV_PASSWORD }}"
+      - name: 🚀 Deploy Web Resources to CRM
+        shell: powershell
+        run: |
+          ./scripts/deploy-webresources.ps1 `
+            -CrmUrl $env:CRM_URL `
+            -Username $env:CRM_USERNAME `
+            -Password $env:CRM_PASSWORD
