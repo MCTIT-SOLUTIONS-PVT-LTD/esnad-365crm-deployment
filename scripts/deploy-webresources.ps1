@@ -44,8 +44,7 @@ foreach ($res in $resources) {
                           -Id $existing.Records[0].webresourceid `
                           -Fields @{ content = $base64 } `
                           -Connection $crmConn
-        }
-        else {
+        } else {
             Write-Host "➕ Creating Web Resource: $($res.logicalname)"
             New-CrmRecord -EntityLogicalName webresource `
                           -Fields @{
@@ -63,7 +62,7 @@ foreach ($res in $resources) {
     catch {
         Write-Host "❌ Error processing $($res.logicalname): $_"
     }
-}
+} # <-- closes foreach
 
 Write-Host "📢 Publishing all customizations..."
 Publish-CrmAllCustomization -Connection $crmConn
