@@ -8,7 +8,7 @@ Import-Module Microsoft.Xrm.Data.PowerShell -Force
 
 Write-Host "Connecting to Dynamics 365 (IFD)..."
 
-# Connection string for IFD + usernamemixed
+# IFD connection string
 $connectionString = @"
 AuthType=IFD;
 Url=$CrmUrl;
@@ -21,6 +21,7 @@ RequireNewInstance=true;
 
 try {
     $crmConn = Get-CrmConnection -ConnectionString $connectionString
+    Set-Variable -Name conn -Value $crmConn -Scope Global  # Required for module to work
 
     if ($crmConn) {
         Write-Host "Connection successful."
@@ -36,7 +37,7 @@ catch {
 
 Write-Host "Starting deployment of web resources..."
 
-# Read metadata
+# Load metadata
 $resources = Import-Csv ./webresources/metadata.csv
 $folderPath = "./webresources/"
 
@@ -83,6 +84,6 @@ foreach ($res in $resources) {
 }
 
 Write-Host "Publishing all customizations..."
-Publish-CrmAllCustomization  # No -Connection here!
+Publish-CrmAllCustomization
 
 Write-Host "Deployment completed successfully."
