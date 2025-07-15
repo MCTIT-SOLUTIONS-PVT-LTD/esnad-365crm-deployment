@@ -24,21 +24,24 @@ jobs:
         dotnet-version: 6.0.x
 
     - name: Restore Dependencies
-      run: dotnet restore Web/TicketSystemWEB/ticketSystemWeb.csproj
+      run: dotnet restore Web/TicketSystemWEB/ticketsystemWeb/ticketsystemWeb.csproj
 
     - name: Replace Tokens in index.html
       run: |
-        $filePath = "Web/TicketSystemWEB/ticketSystemWeb/wwwroot/index.html"
+        $filePath = "Web/TicketSystemWEB/ticketsystemWeb/wwwroot/index.html"
         (Get-Content $filePath) -replace "https://api.crm-esnad.com", "${{ env.DOMAIN }}" `
                                  -replace "8fo6crPvK6y2sBp7Ukga90gK9K0GfTUuQex6FmZVp6XcyuUiF2jBfbP2pObBGfdk", "${{ env.API_TOKEN }}" `
         | Set-Content $filePath
 
     - name: Build Web Project
-      run: dotnet build Web/TicketSystemWEB/ticketSystemWeb.csproj --configuration Release
+      run: dotnet build Web/TicketSystemWEB/ticketsystemWeb/ticketsystemWeb.csproj --configuration Release
+
+    - name: Publish Web Project
+      run: dotnet publish Web/TicketSystemWEB/ticketsystemWeb/ticketsystemWeb.csproj -c Release -o Web/TicketSystemWEB/ticketsystemWeb/publish
 
     - name: Deploy to Azure Web App (DEV)
       uses: azure/webapps-deploy@v2
       with:
         app-name: ci-cd-dev-build-web
         publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_DEV }}
-        package: Web/TicketSystemWEB/bin/Release/net6.0/publish/
+        package: Web/TicketSystemWEB/ticketsystemWeb/publish
