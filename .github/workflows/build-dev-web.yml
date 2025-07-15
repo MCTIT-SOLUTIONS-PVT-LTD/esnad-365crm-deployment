@@ -3,7 +3,7 @@ name: Build and Deploy Web App (DEV)
 on:
   push:
     branches:
-      - dev
+      - DEV
   workflow_dispatch:
 
 jobs:
