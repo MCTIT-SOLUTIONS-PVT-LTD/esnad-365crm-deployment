@@ -42,8 +42,12 @@ jobs:
       - name: 🧰 Restore NuGet Packages
         run: nuget restore Api/TicketSystemApi.sln
 
-      - name: 🏗️ Build Solution
-        run: msbuild Api/TicketSystemApi.sln /p:Configuration=Debug
+      - name: 🏗️ Build Solution with MSBuild
+        run: |
+          $vsPath = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.Component.MSBuild -property installationPath
+          $msbuildPath = Join-Path $vsPath 'MSBuild\Current\Bin\MSBuild.exe'
+          & $msbuildPath "Api/TicketSystemApi.sln" /p:Configuration=Debug
+        shell: pwsh
 
       - name: 🚀 Deploy to Azure Web App
         uses: azure/webapps-deploy@v2
