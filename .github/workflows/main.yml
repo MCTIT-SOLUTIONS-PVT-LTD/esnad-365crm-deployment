@@ -2,9 +2,9 @@ name: Deploy Web Resources to CRM DEV
 
 on:
   push:
-    branches: [DEV]
+    branches: [dev]
   pull_request:
-    branches: [DEV]
+    branches: [dev]
 
 jobs:
   deploy-to-dev:

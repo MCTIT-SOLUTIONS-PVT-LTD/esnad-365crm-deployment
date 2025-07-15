@@ -3,7 +3,7 @@ name: Build and Deploy - DEV
 on:
   push:
     branches:
-      - dev
+      - DEV
     paths:
       - 'Api/**'
 
