@@ -23,18 +23,18 @@ try {
     $crmConn = Get-CrmConnection -ConnectionString $connectionString
 
     if ($crmConn) {
-        Write-Host "✅ Connection successful."
+        Write-Host "Connection successful."
     } else {
-        Write-Host "❌ Failed to connect. No connection returned."
+        Write-Host "Failed to connect. No connection returned."
         exit 1
     }
 }
 catch {
-    Write-Host "❌ Exception while connecting: $($_.Exception.Message)"
+    Write-Host "Exception while connecting: $($_.Exception.Message)"
     exit 1
 }
 
-Write-Host "📂 Starting deployment of web resources..."
+Write-Host "Starting deployment of web resources..."
 
 # Read metadata
 $resources = Import-Csv ./webresources/metadata.csv
@@ -44,7 +44,7 @@ foreach ($res in $resources) {
     $resourcePath = Join-Path $folderPath $res.filepath
 
     if (-not (Test-Path $resourcePath)) {
-        Write-Host "❌ File not found: $resourcePath"
+        Write-Host "File not found: $resourcePath"
         continue
     }
 
@@ -59,12 +59,12 @@ foreach ($res in $resources) {
                                    -Fields webresourceid
 
         if ($existing.Count -gt 0) {
-            Write-Host "🔁 Updating Web Resource: $($res.logicalname)"
+            Write-Host "Updating Web Resource: $($res.logicalname)"
             Set-CrmRecord -EntityLogicalName webresource `
                           -Id $existing.Records[0].webresourceid `
                           -Fields @{ content = $base64 }
         } else {
-            Write-Host "➕ Creating Web Resource: $($res.logicalname)"
+            Write-Host "Creating Web Resource: $($res.logicalname)"
             New-CrmRecord -EntityLogicalName webresource `
                           -Fields @{
                               name            = $res.logicalname
@@ -75,14 +75,14 @@ foreach ($res in $resources) {
                           }
         }
 
-        Write-Host "✅ Successfully deployed: $($res.logicalname)"
+        Write-Host "Successfully deployed: $($res.logicalname)"
     }
     catch {
-        Write-Host "❌ Error processing $($res.logicalname): $($_.Exception.Message)"
+        Write-Host "Error processing $($res.logicalname): $($_.Exception.Message)"
     }
 }
 
-Write-Host "📢 Publishing all customizations..."
-Publish-CrmAllCustomization  # ❌ No -Connection here!
+Write-Host "Publishing all customizations..."
+Publish-CrmAllCustomization  # No -Connection here!
 
-Write-Host "🏁 Deployment completed successfully."
+Write-Host "Deployment completed successfully."
