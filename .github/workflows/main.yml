@@ -11,9 +11,9 @@ jobs:
     runs-on: windows-latest  
 
     env:
-      CRM_URL: ${{ secrets.CRM_URL }}
-      CRM_USERNAME: ${{ secrets.CRM_USERNAME }}
-      CRM_PASSWORD: ${{ secrets.CRM_PASSWORD }}
+      CRM_URL: ${{ vars.CRM_URL }}
+      CRM_USERNAME: ${{ vars.CRM_USERNAME }}
+      CRM_PASSWORD: ${{ vars.CRM_PASSWORD }}
 
     steps:
       - name: 📦 Checkout Repository
