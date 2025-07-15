@@ -26,7 +26,7 @@ jobs:
 
       - name: 🔐 Replace Tokens in Web.config
         run: |
-          $file = "TicketSystemApi/Web.config"
+          $file = "Api/TicketSystemApi/Web.config"
           (Get-Content $file) `
           -replace '__CRM_BASE_URL__', "$env:CRM_BASE_URL" `
           -replace '__CRM_SERVICE_URL__', "$env:CRM_SERVICE_URL" `
