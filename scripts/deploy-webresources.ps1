@@ -9,10 +9,10 @@ Import-Module Microsoft.Xrm.Data.PowerShell -Force
 Write-Host "Connecting to Dynamics 365..."
 
 $securePassword = ConvertTo-SecureString $Password -AsPlainText -Force
-$cred = New-Object System.Management.Automation.PSCredential ($Username, $securePassword)
+$connectionString = "AuthType=Office365;Url=$CrmUrl;Username=$Username;Password=$Password"
 
 try {
-    $crmConn = Get-CrmConnection -ServerUrl $CrmUrl -Credential $cred
+    $crmConn = Get-CrmConnection -ConnectionString $connectionString
 
     if ($crmConn) {
         Write-Host "✅ Connection successful."
