@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - DEV
+    paths:
+      - 'Api/TicketSystemApi/**'
 
 jobs:
   build-dev:
