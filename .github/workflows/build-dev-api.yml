@@ -54,6 +54,6 @@ jobs:
       - name: 🚀 Deploy to Azure Web App
         uses: azure/webapps-deploy@v2
         with:
-          app-name: ci-cd-build-test                     # Replace with your actual App Service name
+          app-name: ci-cd-build-dev                     # Replace with your actual App Service name
           publish-profile: ${{ secrets.AZURE_DEV_API_PUBLISH_PROFILE }}
           package: Api/TicketSystemApi
