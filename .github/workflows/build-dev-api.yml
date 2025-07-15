@@ -40,14 +40,14 @@ jobs:
           Set-Content $file
 
       - name: 🧰 Restore NuGet Packages
-        run: nuget restore TicketSystemApi.sln
+        run: nuget restore Api/TicketSystemApi.sln
 
       - name: 🏗️ Build Solution
-        run: msbuild TicketSystemApi.sln /p:Configuration=Debug
+        run: msbuild Api/TicketSystemApi.sln /p:Configuration=Debug
 
       - name: 🚀 Deploy to Azure Web App
         uses: azure/webapps-deploy@v2
         with:
-          app-name: ci-cd-build-test                   # <-- Replace with your actual Azure App Service name
+          app-name: ci-cd-build-test                     # Replace with your actual App Service name
           publish-profile: ${{ secrets.AZURE_DEV_API_PUBLISH_PROFILE }}
-          package: ${{ github.workspace }}/TicketSystemApi
+          package: Api/TicketSystemApi
