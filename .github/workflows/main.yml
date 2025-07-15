@@ -11,9 +11,9 @@ jobs:
     runs-on: windows-latest  
 
     env:
-      CRM_URL: ${{ vars.CRM_URL }}
-      CRM_USERNAME: ${{ vars.CRM_USERNAME }}
-      CRM_PASSWORD: ${{ vars.CRM_PASSWORD }}
+      CRM_URL: ${{ vars.D365DEV_ENV_URL }}
+      CRM_USERNAME: ${{ vars.D365DEV_USERNAME }}
+      CRM_PASSWORD: ${{ vars.D365DEV_PASSWORD }}
 
     steps:
       - name: 📦 Checkout Repository
