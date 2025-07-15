@@ -1,0 +1,39 @@
+name: Build and Deploy Web - DEV
+
+on:
+  push:
+    branches:
+      - DEV
+    paths:
+      - 'Web/TicketSystemWEB/**'
+
+jobs:
+  build-dev-web:
+    runs-on: windows-latest
+
+    env:
+      DOMAIN: ${{ vars.WEB_DOMAIN_DEV }}
+      API_TOKEN: ${{ vars.WEB_API_TOKEN_DEV }}
+
+    steps:
+      - name: 🧾 Checkout Code
+        uses: actions/checkout@v3
+
+      - name: 🔁 Replace Tokens in index.html
+        run: |
+          $file = "Web/TicketSystemWEB/ticketsystemWeb/wwwroot/index.html"
+          (Get-Content $file) `
+          -replace '__DOMAIN__', "$env:DOMAIN" `
+          -replace '__API_TOKEN__', "$env:API_TOKEN" |
+          Set-Content $file
+
+      - name: 🏗️ Build Web Project
+        run: |
+          dotnet build Web/TicketSystemWEB/ticketsystemWeb.csproj --configuration Release
+
+      - name: 🚀 Deploy to Azure Web App (DEV)
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: ci-cd-dev-build-web                # 🔁 Change to your actual Azure Web App name for dev
+          publish-profile: ${{ secrets.AZURE_WEB_PUBLISH_PROFILE_DEV }}
+          package: Web/TicketSystemWEB
