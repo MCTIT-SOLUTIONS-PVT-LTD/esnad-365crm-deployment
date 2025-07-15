@@ -1,0 +1,59 @@
+name: Build and Deploy - PROD
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'Api/TicketSystemApi/**'
+
+jobs:
+  build-dev:
+    runs-on: windows-latest
+
+    env:
+      CRM_BASE_URL: ${{ vars.D365PROD_ENV_URL }}
+      CRM_SERVICE_URL: ${{ vars.CRM_SERVICE_URL_PROD }}
+      GENESYS_BEARER_TOKEN: ${{ vars.GENESYS_BEARER_TOKEN_PROD }}
+      AZURE_BEARER_TOKEN: ${{ vars.AZURE_BEARER_TOKEN_PROD }}
+      API_BEARER_TOKEN: ${{ vars.API_BEARER_TOKEN_PROD }}
+      REPORT_DATA_TOKEN: ${{ vars.REPORT_DATA_TOKEN_PROD }}
+      REPORT_DATA_TOKEN1: ${{ vars.REPORT_DATA_TOKEN1_PROD }}
+      CRM_USERNAME: ${{ vars.D365PROD_USERNAME }}
+      CRM_PASSWORD: ${{ vars.D365PROD_PASSWORD }}
+
+    steps:
+      - name: 🧾 Checkout Code
+        uses: actions/checkout@v3
+
+      - name: 🔐 Replace Tokens in Web.config
+        run: |
+          $file = "Api/TicketSystemApi/Web.config"
+          (Get-Content $file) `
+          -replace '__CRM_BASE_URL__', "$env:CRM_BASE_URL" `
+          -replace '__CRM_SERVICE_URL__', "$env:CRM_SERVICE_URL" `
+          -replace '__GENESYS_BEARER_TOKEN__', "$env:GENESYS_BEARER_TOKEN" `
+          -replace '__AZURE_BEARER_TOKEN__', "$env:AZURE_BEARER_TOKEN" `
+          -replace '__API_BEARER_TOKEN__', "$env:API_BEARER_TOKEN" `
+          -replace '__REPORT_DATA_TOKEN__', "$env:REPORT_DATA_TOKEN" `
+          -replace '__REPORT_DATA_TOKEN1__', "$env:REPORT_DATA_TOKEN1" `
+          -replace '__CRM_USERNAME__', "$env:CRM_USERNAME" `
+          -replace '__CRM_PASSWORD__', "$env:CRM_PASSWORD" |
+          Set-Content $file
+
+      - name: 🧰 Restore NuGet Packages
+        run: nuget restore Api/TicketSystemApi.sln
+
+      - name: 🏗️ Build Solution with MSBuild
+        run: |
+          $vsPath = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.Component.MSBuild -property installationPath
+          $msbuildPath = Join-Path $vsPath 'MSBuild\Current\Bin\MSBuild.exe'
+          & $msbuildPath "Api/TicketSystemApi.sln" /p:Configuration=Debug
+        shell: pwsh
+
+      - name: 🚀 Deploy to Azure Web App
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: ci-cd-build-test                     # Replace with your actual App Service name
+          publish-profile: ${{ secrets.AZURE_PROD_API_PUBLISH_PROFILE }}
+          package: Api/TicketSystemApi
