@@ -1,8 +1,15 @@
 ﻿var builder = WebApplication.CreateBuilder(args);
+
+// Optional: Add services if needed
+// builder.Services.AddRazorPages(); 
+
 var app = builder.Build();
 
-app.UseStaticFiles(); // 👈 This enables serving HTML, CSS, JS from wwwroot
+// Ensure it serves wwwroot static files
+app.UseDefaultFiles();      // 👈 serves index.html by default if available
+app.UseStaticFiles();       // 👈 serves all files from wwwroot
 
-app.MapFallbackToFile("index.html"); // Optional: Serve index.html by default
+// Optional: Fallback to index.html for SPA apps (like React/Vue/Angular)
+// app.MapFallbackToFile("index.html");
 
 app.Run();
