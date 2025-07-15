@@ -74,7 +74,7 @@ foreach ($res in $resources) {
                               content         = $base64
                               webresourcetype = New-Object Microsoft.Xrm.Sdk.OptionSetValue([int]($res.type.Trim()))
                           }
-            Write-Host "Deploying $($res.logicalname) with type = '$($res.type)' → Trimmed: '$($res.type.Trim())'"
+            Write-Host "Deploying $($res.logicalname) with type = '$($res.type.Trim())'"
         }
 
         Write-Host "Successfully deployed: $($res.logicalname)"
