@@ -1,0 +1,190 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Your Feedback</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        /* 🎨 Your original CSS remains unchanged */
+    </style>
+</head>
+<body>
+
+    <!-- 🎯 Your original HTML content remains unchanged -->
+
+    <script>
+        // ✅ Replace these at build time in GitHub Actions
+        const domain = "__DOMAIN__";
+        const token = "__API_TOKEN__";
+
+        // Optional: fallback (if you want to override via window.ENV in dev)
+        // const domain = window.ENV?.DOMAIN || "__DOMAIN__";
+        // const token = window.ENV?.TOKEN || "__API_TOKEN__";
+
+        const stars = document.querySelectorAll('.star');
+        const urlParams = new URLSearchParams(window.location.search);
+        let ticketNumber = urlParams.get("ticketNumber");
+        let selectedRating = 0;
+        let caseId = null;
+
+        const translations = {
+            en: {
+                title: "Your Feedback",
+                ticketNumber: "Ticket Number",
+                helperText: "Your feedback helps us improve our service. Thank you!",
+                placeholder: "How can we improve the ticket processing experience?",
+                timeQuestion: "Was the time taken to process the ticket appropriate?",
+                submit: "Submit",
+                thankYouTitle: "Thank You!",
+                thankYouText: "Your feedback has been submitted successfully.",
+                alreadySubmittedTitle: "Feedback Already Submitted",
+                alreadySubmittedText: "You have already provided feedback for this ticket. Thank you!",
+                Yes: "Yes",
+                No: "No",
+                starLabel: "How satisfied are you with how the ticket was handled? (Scale 1–5)"
+            },
+            ar: {
+                title: "ملاحظاتك",
+                ticketNumber: "رقم التذكرة",
+                helperText: "ملاحظاتك تساعدنا في تحسين خدماتنا. شكراً لك!",
+                placeholder: "كيف يمكننا تحسين تجربة معالجة التذاكر؟ ",
+                timeQuestion: "هل كانت المدة المستغرقة لمعالجة التذكرة مناسبة؟",
+                submit: "إرسال",
+                thankYouTitle: "شكرًا لك!",
+                thankYouText: "تم إرسال ملاحظاتك بنجاح.",
+                alreadySubmittedTitle: "تم إرسال الملاحظات مسبقًا",
+                alreadySubmittedText: "لقد قدمت ملاحظاتك بالفعل لهذه التذكرة. شكرًا لك!",
+                Yes: "نعم",
+                No: "لا",
+                starLabel: "ما مدى رضاك عن معالجة التذكرة؟ (مقياس 5-1)"
+            }
+        };
+
+        function setLanguage(lang) {
+            const t = translations[lang] || translations['ar'];
+            document.querySelector("#formSection h4").innerText = t.title;
+            document.getElementById("comment").placeholder = t.placeholder;
+            document.querySelector(".form-label[for='timeAppropriate']").innerText = t.timeQuestion;
+            document.querySelector(".btn-submit").innerText = t.submit;
+            document.querySelector("#thankYouSection h4").innerText = t.thankYouTitle;
+            document.querySelector("#thankYouSection p").innerText = t.thankYouText;
+            document.querySelector("#errorSection h4").innerText = t.alreadySubmittedTitle;
+            document.querySelector("#errorSection p").innerText = t.alreadySubmittedText;
+            document.getElementById("starLabel").innerText = t.starLabel;
+            const select = document.getElementById("timeAppropriate");
+            select.options[0].text = t.Yes;
+            select.options[1].text = t.No;
+            const label = document.querySelector("label[for='timeAppropriate']");
+            label.innerText = t.timeQuestion;
+            label.style.textAlign = lang === "ar" ? "right" : "left";
+            document.body.dir = lang === "ar" ? "rtl" : "ltr";
+        }
+
+        document.getElementById("languageSwitcher").addEventListener("change", (e) => {
+            setLanguage(e.target.value);
+        });
+
+        setLanguage("ar");
+
+        function showLoader() {
+            document.getElementById("loaderOverlay").style.display = "flex";
+        }
+
+        function hideLoader() {
+            document.getElementById("loaderOverlay").style.display = "none";
+        }
+
+        stars.forEach(star => {
+            star.addEventListener('click', () => {
+                selectedRating = parseInt(star.getAttribute('data-value'));
+                stars.forEach(s => {
+                    s.classList.toggle('selected', parseInt(s.getAttribute('data-value')) <= selectedRating);
+                });
+            });
+        });
+
+        function submitFeedback() {
+            let comment = document.getElementById('comment').value.trim();
+            const timeAppropriate = document.getElementById('timeAppropriate').value;
+            if (!selectedRating) return alert("Please select a star rating.");
+            if (!caseId) return alert("Cannot submit feedback. Case ID is missing.");
+            if (!comment) comment = "No comments added by customer";
+
+            showLoader();
+
+            fetch(`${domain}/customers/submit-feedback`, {
+                method: "POST",
+                headers: {
+                    "Authorization": `Bearer ${token}`,
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    CaseId: caseId,
+                    Rating: selectedRating,
+                    Comment: comment,
+                    TimeAppropriate: parseInt(timeAppropriate)
+                })
+            })
+            .then(res => res.json())
+            .then(response => {
+                hideLoader();
+                if (response.Status?.toLowerCase() === "success") {
+                    document.getElementById("formSection").style.display = "none";
+                    document.getElementById("thankYouSection").style.display = "block";
+                    const duration = 3000;
+                    const end = Date.now() + duration;
+                    const defaults = { startVelocity: 35, spread: 360, ticks: 80, zIndex: 999 };
+                    const audio = new Audio("https://cdn.pixabay.com/audio/2022/03/15/audio_1cf9bdb735.mp3");
+                    audio.play().catch(() => {});
+                    const interval = setInterval(() => {
+                        if (Date.now() > end) return clearInterval(interval);
+                        confetti(Object.assign({}, defaults, {
+                            particleCount: 40,
+                            origin: { x: Math.random(), y: Math.random() - 0.2 }
+                        }));
+                    }, 250);
+                } else if (response.Message?.includes("already submitted")) {
+                    document.getElementById("formSection").style.display = "none";
+                    document.getElementById("errorSection").style.display = "block";
+                } else {
+                    alert("❌ Error: " + (response.Message || "Unknown error"));
+                }
+            })
+            .catch(err => {
+                hideLoader();
+                console.error("Submit error:", err);
+                alert("❌ Could not submit feedback. Please try again.");
+            });
+        }
+
+        showLoader();
+        fetch(`${domain}/customers/by-ticket/${ticketNumber}`, {
+            headers: { "Authorization": `Bearer ${token}` }
+        })
+        .then(res => res.json())
+        .then(response => {
+            hideLoader();
+            if (response.Status?.toLowerCase() === "success") {
+                const user = response.Data;
+                caseId = user.CaseId;
+                document.getElementById("ticketNumber").innerText = `${translations["ar"].ticketNumber}: ${user.TicketNumber}`;
+                document.getElementById("userName").innerText = `${user.FirstName} ${user.LastName}`;
+            } else if (response.Message?.includes("already submitted")) {
+                document.getElementById("formSection").style.display = "none";
+                document.getElementById("errorSection").style.display = "block";
+            } else {
+                alert("❌ Error: " + (response.Message || "Unknown error"));
+            }
+        })
+        .catch(err => {
+            hideLoader();
+            console.error("User info load error:", err);
+            document.getElementById("ticketNumber").innerText = "Ticket Number: (Not Found)";
+            document.getElementById("userName").innerText = "(Unknown)";
+        });
+    </script>
+
+</body>
+</html>
