@@ -12,7 +12,64 @@
 </head>
 <body>
 
-    <!-- 🎯 Your original HTML content remains unchanged -->
+    <div id="formSection" class="feedback-card">
+        <div class="position-absolute" style="top: 20px; right: 30px;">
+            <select id="languageSwitcher" class="form-select form-select-sm" style="border-radius: 20px;">
+                <option value="ar" selected>🇸🇦 العربية</option>
+                <option value="en">🇺🇸 English</option>
+            </select>
+        </div>
+
+        <h4>Your Feedback</h4>
+        <div class="ticket-number" id="ticketNumber">Loading ticket...</div>
+        <!--<p class="helper-text">Your feedback helps us improve our service. Thank you!</p>-->
+        <label id="starLabel" class="form-label mb-0" style="display: block; text-align: left;">
+            How satisfied are you with how the ticket was handled? (Scale 1–5)
+        </label>
+        <div class="star-rating mt-0" id="starContainer">
+            <span class="star" data-value="1">★</span>
+            <span class="star" data-value="2">★</span>
+            <span class="star" data-value="3">★</span>
+            <span class="star" data-value="4">★</span>
+            <span class="star" data-value="5">★</span>
+        </div>
+        <div class="mb-3">
+            <label class="form-label" for="timeAppropriate">Was the time taken to process the ticket appropriate?</label>
+
+            <select id="timeAppropriate" class="form-select" style="border-radius: 0.375rem;">
+                <!--<option value="">Select an option</option>-->
+                <option value="1">Yes</option>
+                <option value="2">No</option>
+            </select>
+        </div>
+
+        <textarea class="form-control" id="comment" rows="4" placeholder="How can we improve the ticket processing experience? (Open-ended)"></textarea>
+        <div class="footer-section">
+            <div class="user-info">
+                <img src="https://cdn-icons-png.flaticon.com/512/921/921347.png" alt="User Avatar">
+                <div class="user-name" id="userName">Loading user...</div>
+            </div>
+            <button class="btn btn-submit" onclick="submitFeedback()">Submit</button>
+        </div>
+    </div>
+
+    <div id="thankYouSection">
+        <div class="emoji">🎉</div>
+        <h4>Thank You!</h4>
+        <p>Your feedback has been submitted successfully.</p>
+    </div>
+
+    <div id="errorSection">
+        <div class="emoji">❌</div>
+        <h4>Feedback Already Submitted</h4>
+        <p>You have already provided feedback for this ticket. Thank you!</p>
+    </div>
+
+    <div id="loaderOverlay">
+        <div class="spinner-border text-success" style="width: 3rem; height: 3rem;" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
 
     <script>
         // ✅ Replace these at build time in GitHub Actions
