@@ -74,6 +74,7 @@ foreach ($res in $resources) {
                               content         = $base64
                               webresourcetype = [int]($res.type.Trim())
                           }
+            Write-Host "Deploying $($res.logicalname) with type = '$($res.type)' → Trimmed: '$($res.type.Trim())'"
         }
 
         Write-Host "Successfully deployed: $($res.logicalname)"
