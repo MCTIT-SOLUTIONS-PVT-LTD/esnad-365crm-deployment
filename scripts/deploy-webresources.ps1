@@ -72,7 +72,7 @@ foreach ($res in $resources) {
                               displayname     = $res.displayname
                               description     = $res.description
                               content         = $base64
-                              webresourcetype = [int]$res.type
+                              webresourcetype = [int]($res.type.Trim())
                           }
         }
 
