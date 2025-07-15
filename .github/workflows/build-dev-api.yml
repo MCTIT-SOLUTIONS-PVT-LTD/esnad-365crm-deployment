@@ -4,8 +4,6 @@ on:
   push:
     branches:
       - DEV
-    paths:
-      - 'Api/**'
 
 jobs:
   build-dev:
