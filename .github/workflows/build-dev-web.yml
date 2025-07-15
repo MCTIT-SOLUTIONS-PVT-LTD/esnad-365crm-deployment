@@ -40,6 +40,5 @@ jobs:
       uses: azure/webapps-deploy@v2
       with:
         app-name: ci-cd-dev-build-web
-        slot-name: Production
         publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_DEV }}
         package: Web/TicketSystemWEB/bin/Release/net6.0/publish/
