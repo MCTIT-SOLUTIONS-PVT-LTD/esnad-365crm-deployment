@@ -1,24 +1,41 @@
 param(
-  [string]$crmUrl,
-  [string]$username,
-  [string]$password,
-  [string]$solutionPath
+    [string]$crmUrl,
+    [string]$username,
+    [string]$password,
+    [string]$solutionPath
 )
 
-Write-Host "📦 Starting Unmanaged Solution Import..."
+Write-Host "📦 Starting D365 Unmanaged Solution Import..."
+Write-Host "➡️ CRM URL: $crmUrl"
+Write-Host "➡️ Username: $username"
+Write-Host "➡️ Solution File: $solutionPath"
 
-Install-Module Microsoft.Xrm.Data.PowerShell -Force -Scope CurrentUser
+# Install required module if missing
+Install-Module -Name Microsoft.Xrm.Data.PowerShell -Force -Scope CurrentUser
 
-$securePassword = ConvertTo-SecureString $password -AsPlainText -Force
-$cred = New-Object System.Management.Automation.PSCredential ($username, $securePassword)
+# Build connection string for IFD with ADFS
+$connectionString = @"
+AuthType=IFD;
+Url=$crmUrl;
+Domain=crm-esnad.com;
+Username=$username;
+Password=$password;
+HomeRealmUri=https://sts1.crm-esnad.com/adfs/services/trust/13/usernamemixed;
+RequireNewInstance=true;
+"@
 
-$connection = Connect-CrmOnline -ServerUrl $crmUrl -Credential $cred -AuthType IFDP
+# Connect using connection string
+$connection = Get-CrmConnection -ConnectionString $connectionString
 
+# Import unmanaged solution
 Import-CrmSolution `
-  -conn $connection `
-  -SolutionFilePath $solutionPath `
-  -OverwriteUnManagedCustomizations:$true `
-  -PublishWorkflows:$true `
-  -Verbose
+    -conn $connection `
+    -SolutionFilePath $solutionPath `
+    -OverwriteUnManagedCustomizations:$true `
+    -PublishWorkflows:$true `
+    -Verbose
 
-Write-Host "✅ Solution imported and published successfully"
+# Publish all changes
+Publish-CrmAllCustomization -conn $connection
+
+Write-Host "✅ Solution import and publish completed."
