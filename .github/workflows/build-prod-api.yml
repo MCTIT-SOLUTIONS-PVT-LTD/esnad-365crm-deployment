@@ -8,7 +8,7 @@ on:
       - 'Api/TicketSystemApi/**'
 
 jobs:
-  build-prod:
+  build-prod-api:
     runs-on: windows-latest
 
     env:
@@ -54,6 +54,6 @@ jobs:
       - name: 🚀 Deploy to Azure Web App
         uses: azure/webapps-deploy@v2
         with:
-          app-name: ci-cd-prod-build-test                     # Replace with your actual App Service name
+          app-name: api-crm-esnad                     # Replace with your actual App Service name
           publish-profile: ${{ secrets.AZURE_PROD_API_PUBLISH_PROFILE }}
           package: Api/TicketSystemApi
