@@ -24,12 +24,14 @@ jobs:
       - name: 🔍 Step 2 - Show Working Directory and Files
         shell: pwsh
         run: |
+         Write-Host "🎯 Workflow started"
           Write-Host "`n📂 Working Directory: $PWD"
           Get-ChildItem -Recurse
 
       - name: ✅ Step 3 - Verify Solution File Exists
         shell: pwsh
         run: |
+        
           $solutionInput = "${{ github.event.inputs.solution }}"
           if ([string]::IsNullOrWhiteSpace($solutionInput)) {
             $solutionInput = 'Solutions/EsnadCICD_1_0_0_1.zip'
@@ -46,6 +48,7 @@ jobs:
       - name: 🛠 Step 4 - Import Solution to D365 On-Prem
         shell: pwsh
         run: |
+        
           $solutionInput = "${{ github.event.inputs.solution }}"
           if ([string]::IsNullOrWhiteSpace($solutionInput)) {
             $solutionInput = 'Solutions/EsnadCICD_1_0_0_1.zip'
