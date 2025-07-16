@@ -1,65 +1,93 @@
-name: Deploy D365 Unmanaged Solution (On-Prem)
+name: 🚀 Deploy CRM Solution (On-Prem)
 
 on:
   push:
     branches:
-      - dev
+      - DEV
     paths:
-      - 'Solutions/**'   # Trigger only if solution zip is pushed
+      - 'Solutions/**'
   workflow_dispatch:
     inputs:
       solution:
-        description: "Unmanaged solution ZIP path (relative to repo root)"
+        description: 'Path to unmanaged solution ZIP'
         required: true
-        default: "Solutions/EsnadCICD_1_0_0_0.zip"
+        default: 'Solutions/EsnadCICD_1_0_0_1.zip'
 
 jobs:
-  deploy-d365-dev:
-    runs-on: self-hosted
+  deploy-crm:
+    runs-on: self-hosted  # Ensure this agent has Dynamics 365 SDK tools installed
 
     steps:
-      - name: ✅ GitHub Actions workflow started
-        run: echo "GitHub Actions workflow triggered successfully"
-
-      - name: ⬇️ Checkout Code
+      - name: ⬇️ Step 1 - Checkout Repository
         uses: actions/checkout@v3
 
-      - name: 📁 List Solution Files
+      - name: 🔍 Step 2 - Show Working Directory and Files
         shell: pwsh
         run: |
-          Write-Host "`n🔍 Listing contents of Solutions folder:"
-          Get-ChildItem "${{ github.workspace }}/Solutions" | ForEach-Object { Write-Host $_.FullName }
+          Write-Host "`n📂 Working Directory: $PWD"
+          Get-ChildItem -Recurse
 
-      - name: 🛠 Import Unmanaged Solution to D365 On-Prem
+      - name: ✅ Step 3 - Verify Solution File Exists
         shell: pwsh
         run: |
-          Write-Host "`n📦 Preparing solution import variables"
-
-          # Handle path from input or default
           $solutionInput = "${{ github.event.inputs.solution }}"
           if ([string]::IsNullOrWhiteSpace($solutionInput)) {
-            $solutionInput = "Solutions/EsnadCICD_1_0_0_0.zip"
+            $solutionInput = 'Solutions/EsnadCICD_1_0_0_1.zip'
           }
 
           $solutionPath = Join-Path "${{ github.workspace }}" $solutionInput
-          Write-Host "`n📁 Full solution path: $solutionPath"
+          Write-Host "`n🔎 Checking for solution file at: $solutionPath"
+          if (-not (Test-Path $solutionPath)) {
+            throw "❌ Solution file not found: $solutionPath"
+          } else {
+            Write-Host "✅ Solution file found: $solutionPath"
+          }
 
-          # CRM connection variables
+      - name: 🛠 Step 4 - Import Solution to D365 On-Prem
+        shell: pwsh
+        run: |
+          $solutionInput = "${{ github.event.inputs.solution }}"
+          if ([string]::IsNullOrWhiteSpace($solutionInput)) {
+            $solutionInput = 'Solutions/EsnadCICD_1_0_0_1.zip'
+          }
+
+          $solutionPath = Join-Path "${{ github.workspace }}" $solutionInput
           $crmUrl = "${{ vars.D365DEV_ENV_URL }}"
           $username = "${{ vars.D365DEV_USERNAME }}"
           $password = "${{ vars.D365DEV_PASSWORD }}"
 
-          # Connection String
           Write-Host "`n🔑 Building connection string"
           $connectionString = @"AuthType=IFD;Url=$crmUrl;Domain=crm-esnad.com;Username=$username;Password=$password;HomeRealmUri=https://sts1.crm-esnad.com/adfs/services/trust/13/usernamemixed;RequireNewInstance=true;"@
 
-          Write-Host "`n🔁 Importing solution: $solutionPath"
-          Write-Host "🔒 Connecting to CRM: $crmUrl"
+          Write-Host "`n📦 Starting solution import..."
+          Write-Host "🔗 CRM URL: $crmUrl"
+          Write-Host "📁 Solution Path: $solutionPath"
 
-          try {
-            Import-CrmSolution -ConnectionString $connectionString -SolutionFilePath $solutionPath -PublishWorkflows:$true -Verbose
-            Write-Host "✅ Solution import completed successfully"
-          } catch {
-            Write-Error "❌ Solution import failed: $_"
-            exit 1
-          }
+          Import-CrmSolution `
+            -ConnectionString $connectionString `
+            -SolutionFilePath $solutionPath `
+            -OverwriteUnmanagedCustomizations:$true `
+            -PublishWorkflows:$true
+
+          Write-Host "✅ Solution import completed successfully."
+
+      - name: 📢 Step 5 - Publish All Customizations (Optional)
+        shell: pwsh
+        run: |
+          $crmUrl = "${{ vars.D365DEV_ENV_URL }}"
+          $username = "${{ vars.D365DEV_USERNAME }}"
+          $password = "${{ vars.D365DEV_PASSWORD }}"
+
+          $connectionString = @"AuthType=IFD;Url=$crmUrl;Domain=crm-esnad.com;Username=$username;Password=$password;HomeRealmUri=https://sts1.crm-esnad.com/adfs/services/trust/13/usernamemixed;RequireNewInstance=true;"@
+
+          Write-Host "`n🚀 Publishing all customizations..."
+          Publish-CrmAllCustomizations -ConnectionString $connectionString
+          Write-Host "✅ Publish completed."
+
+      - name: 📝 Step 6 - Log Import Metadata
+        shell: pwsh
+        run: |
+          Write-Host "`n🧾 Logging import metadata"
+          Write-Host "🕒 Timestamp: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
+          Write-Host "📦 Solution File: ${{ github.event.inputs.solution }}"
+          Write-Host "👤 Imported By: GitHub Actions (CI/CD Pipeline)"
