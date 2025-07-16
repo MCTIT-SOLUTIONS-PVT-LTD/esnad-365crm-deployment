@@ -3,7 +3,7 @@ name: Deploy D365 Unmanaged Solution (On-Prem)
 on:
   push:
     branches:
-      - main
+      - dev
     paths:
       - 'Solutions/**'   # Only trigger if solution ZIP is pushed
   workflow_dispatch:
@@ -14,7 +14,7 @@ on:
         default: "Solutions/EsnadCICD_1_0_0_0.zip"
 
 jobs:
-  deploy:
+  deploy-d365-dev:
     runs-on: self-hosted
 
     steps:
