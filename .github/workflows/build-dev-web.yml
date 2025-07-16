@@ -11,8 +11,8 @@ jobs:
     runs-on: windows-latest
 
     env:
-      DOMAIN: https://devapi.crm-esnad.com
-      API_TOKEN: ${{ secrets.DEV_API_TOKEN }}
+      DOMAIN: ${{ secrets.WEB_DOMAIN_DEV }}
+      API_TOKEN: ${{ secrets.WEB_API_TOKEN_DEV }}
 
     steps:
     - name: Checkout Code
