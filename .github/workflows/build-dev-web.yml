@@ -11,8 +11,8 @@ jobs:
     runs-on: windows-latest
 
     env:
-      DOMAIN: ${{ secrets.WEB_DOMAIN_DEV }}
-      API_TOKEN: ${{ secrets.WEB_API_TOKEN_DEV }}
+      DOMAIN: ${{ vars.WEB_DOMAIN_DEV }}
+      API_TOKEN: ${{ vars.REPORT_DATA_TOKEN_DEV }}
 
     steps:
     - name: Checkout Code
