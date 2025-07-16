@@ -18,6 +18,9 @@ jobs:
     runs-on: self-hosted
 
     steps:
+      - name: Hello World Test
+        run: echo "✅ GitHub Actions workflow has started successfully"
+
       - name: ⬇️ Checkout Code
         uses: actions/checkout@v3
 
