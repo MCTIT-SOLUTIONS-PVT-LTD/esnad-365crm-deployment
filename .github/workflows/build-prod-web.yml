@@ -1,18 +1,19 @@
-name: Build and Deploy Web App (DEV)
+name: Build and Deploy Web App (PROD)
 
 on:
   push:
     branches:
-      - DEV
-  workflow_dispatch:
+      - main
+    paths:
+      - 'Api/TicketSystemApi/**'
 
 jobs:
   build-web-prod:
     runs-on: windows-latest
 
     env:
-      DOMAIN: ${{ vars.WEB_DOMAIN_DEV }}
-      API_TOKEN: ${{ vars.REPORT_DATA_TOKEN_DEV }}
+      DOMAIN: ${{ vars.WEB_DOMAIN_PROD }}
+      API_TOKEN: ${{ vars.REPORT_DATA_TOKEN_PROD }}
 
     steps:
     - name: Checkout Code
@@ -39,9 +40,9 @@ jobs:
     - name: Publish Web Project
       run: dotnet publish Web/TicketSystemWEB/ticketsystemWeb/ticketsystemWeb.csproj -c Release -o Web/TicketSystemWEB/ticketsystemWeb/publish
 
-    - name: Deploy to Azure Web App (DEV)
+    - name: Deploy to Azure Web App (PROD)
       uses: azure/webapps-deploy@v2
       with:
-        app-name: ci-cd-dev-build-web
-        publish-profile: ${{ secrets.AZURE_WEB_PUBLISH_PROFILE_DEV }}
+        app-name: ci-cd-prod-build-web
+        publish-profile: ${{ secrets.AZURE_WEB_PUBLISH_PROFILE_PROD }}
         package: Web/TicketSystemWEB/ticketsystemWeb/publish
