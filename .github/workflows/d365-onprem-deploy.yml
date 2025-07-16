@@ -1,12 +1,11 @@
 name: Deploy D365 Unmanaged Solution (On-Prem)
 
 on:
-  workflow_dispatch:
-    inputs:
-      solution:
-        description: "Unmanaged solution ZIP path"
-        required: true
-        default: "Solutions/EsnadCICD_1_0_0_0.zip"
+  push:
+    branches:
+      - DEV
+    paths:
+      - 'Solutions/**'   # Only trigger if a solution ZIP is pushed
 
 jobs:
   deploy:
@@ -19,8 +18,9 @@ jobs:
       - name: 🛠 Import Unmanaged Solution to D365 On-Prem
         shell: pwsh
         run: |
-          $solutionPath = "${{ github.workspace }}/${{ github.event.inputs.solution }}"
+          $solutionPath = "${{ github.workspace }}/Solutions/EsnadCICD_1_0_0_0.zip"
           $scriptPath = "${{ github.workspace }}/scripts/Import-D365Solution.ps1"
+
           pwsh -File $scriptPath `
             -crmUrl "${{ vars.D365DEV_ENV_URL }}" `
             -username "${{ vars.D365DEV_USERNAME }}" `
