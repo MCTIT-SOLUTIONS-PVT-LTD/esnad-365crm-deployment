@@ -3,9 +3,15 @@ name: Deploy D365 Unmanaged Solution (On-Prem)
 on:
   push:
     branches:
-      - DEV
+      - main
     paths:
-      - 'Solutions/**'   # Only trigger if a solution ZIP is pushed
+      - 'Solutions/**'   # Only trigger if solution ZIP is pushed
+  workflow_dispatch:
+    inputs:
+      solution:
+        description: "Unmanaged solution ZIP path"
+        required: true
+        default: "Solutions/EsnadCICD_1_0_0_0.zip"
 
 jobs:
   deploy:
@@ -15,14 +21,28 @@ jobs:
       - name: ⬇️ Checkout Code
         uses: actions/checkout@v3
 
+      - name: 📂 Show Files in Solutions Folder
+        shell: pwsh
+        run: |
+          Get-ChildItem "${{ github.workspace }}/Solutions"
+
       - name: 🛠 Import Unmanaged Solution to D365 On-Prem
         shell: pwsh
         run: |
-          $solutionPath = "${{ github.workspace }}/Solutions/EsnadCICD_1_0_0_0.zip"
-          $scriptPath = "${{ github.workspace }}/scripts/Import-D365Solution.ps1"
+          $solutionPath = "${{ github.workspace }}/${{ github.event.inputs.solution || 'Solutions/EsnadCICD_1_0_0_0.zip' }}"
+          $crmUrl = "${{ vars.D365DEV_ENV_URL }}"
+          $username = "${{ vars.D365DEV_USERNAME }}"
+          $password = "${{ vars.D365DEV_PASSWORD }}"
 
-          pwsh -File $scriptPath `
-            -crmUrl "${{ vars.D365DEV_ENV_URL }}" `
-            -username "${{ vars.D365DEV_USERNAME }}" `
-            -password "${{ vars.D365DEV_PASSWORD }}" `
-            -solutionPath $solutionPath
+          $connectionString = @"AuthType=IFD;Url=$crmUrl;Domain=crm-esnad.com;Username=$username;Password=$password;HomeRealmUri=https://sts1.crm-esnad.com/adfs/services/trust/13/usernamemixed;RequireNewInstance=true;"@
+
+          Write-Host "🔁 Importing solution: $solutionPath"
+          Write-Host "🔒 Connecting to CRM: $crmUrl"
+
+          try {
+            Import-CrmSolution -ConnectionString $connectionString -SolutionFilePath $solutionPath -PublishWorkflows:$true -Verbose
+            Write-Host "✅ Solution import completed"
+          } catch {
+            Write-Error "❌ Import failed: $_"
+            exit 1
+          }
