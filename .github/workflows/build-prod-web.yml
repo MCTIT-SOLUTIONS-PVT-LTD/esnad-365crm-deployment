@@ -43,6 +43,6 @@ jobs:
     - name: Deploy to Azure Web App (PROD)
       uses: azure/webapps-deploy@v2
       with:
-        app-name: ci-cd-prod-build-web
+        app-name: ticketrating
         publish-profile: ${{ secrets.AZURE_WEB_PUBLISH_PROFILE_PROD }}
         package: Web/TicketSystemWEB/ticketsystemWeb/publish
