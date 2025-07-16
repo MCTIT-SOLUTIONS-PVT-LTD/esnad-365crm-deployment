@@ -5,7 +5,7 @@ on:
     branches:
       - dev
     paths:
-      - 'Solutions/**'   # Only trigger if solution ZIP is pushed
+      - 'Solutions/**'   # Only trigger when solution zip is pushed
   workflow_dispatch:
     inputs:
       solution:
@@ -24,29 +24,34 @@ jobs:
       - name: 📂 Show Files in Solutions Folder
         shell: pwsh
         run: |
-          Get-ChildItem "${{ github.workspace }}/Solutions"
+          Write-Host "📁 Listing contents of the Solutions folder:"
+          Get-ChildItem "${{ github.workspace }}/Solutions" | ForEach-Object { Write-Host $_.FullName }
 
       - name: 🛠 Import Unmanaged Solution to D365 On-Prem
         shell: pwsh
         run: |
           Write-Host "📦 Setting variables"
-          $solutionPath = "${{ github.workspace }}/${{ github.event.inputs.solution || 'Solutions/EsnadCICD_1_0_0_0.zip' }}"
+
+          # Get solution path (manual input or default)
+          $solutionPath = "${{ github.workspace }}/" + (${{
+            github.event.inputs.solution != '' && github.event.inputs.solution || 'Solutions/EsnadCICD_1_0_0_0.zip'
+          }})
+
           $crmUrl = "${{ vars.D365DEV_ENV_URL }}"
           $username = "${{ vars.D365DEV_USERNAME }}"
           $password = "${{ vars.D365DEV_PASSWORD }}"
 
-          Write-Host "🔑 Building connection string"
+          Write-Host "`n🔑 Building connection string"
           $connectionString = @"AuthType=IFD;Url=$crmUrl;Domain=crm-esnad.com;Username=$username;Password=$password;HomeRealmUri=https://sts1.crm-esnad.com/adfs/services/trust/13/usernamemixed;RequireNewInstance=true;"@
 
-          Write-Host "🔁 Importing solution from path: $solutionPath"
+          Write-Host "`n🔁 Importing solution from path: $solutionPath"
           Write-Host "🔒 Connecting to CRM: $crmUrl"
-          Write-Host "📡 Connection String:"
-          Write-Host $connectionString
+          Write-Host "📡 Connection String:"; Write-Host $connectionString
 
           try {
             Write-Host "🚀 Executing Import-CrmSolution"
             Import-CrmSolution -ConnectionString $connectionString -SolutionFilePath $solutionPath -PublishWorkflows:$true -Verbose
-            Write-Host "✅ Solution import completed"
+            Write-Host "✅ Solution import completed successfully"
           } catch {
             Write-Error "❌ Import failed: $_"
             exit 1
