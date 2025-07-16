@@ -4,7 +4,8 @@ on:
   push:
     branches:
       - DEV
-  workflow_dispatch:
+    paths:
+      - 'Web/TicketSystemWEB/**'
 
 jobs:
   build-web-prod:
