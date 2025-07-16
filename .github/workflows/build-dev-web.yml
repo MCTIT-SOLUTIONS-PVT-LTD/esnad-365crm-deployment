@@ -8,7 +8,7 @@ on:
       - 'Web/TicketSystemWEB/**'
 
 jobs:
-  build-web-prod:
+  build-web-dev:
     runs-on: windows-latest
 
     env:
