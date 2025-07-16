@@ -29,7 +29,7 @@ jobs:
     - name: Replace Tokens in index.html
       run: |
         $filePath = "Web/TicketSystemWEB/ticketsystemWeb/wwwroot/index.html"
-        (Get-Content $filePath) -replace "https://api.crm-esnad.com", "${{ env.DOMAIN }}" `
+        (Get-Content $filePath) -replace "https://devapi.crm-esnad.com", "${{ env.DOMAIN }}" `
                                  -replace "8fo6crPvK6y2sBp7Ukga90gK9K0GfTUuQex6FmZVp6XcyuUiF2jBfbP2pObBGfdk", "${{ env.API_TOKEN }}" `
         | Set-Content $filePath
 
