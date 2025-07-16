@@ -1,0 +1,48 @@
+name: Build and Deploy Web App (PROD)
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'Web/TicketSystemWEB/**'
+
+jobs:
+  build-web-prod:
+    runs-on: windows-latest
+
+    env:
+      DOMAIN: ${{ vars.WEB_DOMAIN_PROD }}
+      API_TOKEN: ${{ vars.REPORT_DATA_TOKEN_PROD }}
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    - name: Setup .NET Core
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: 6.0.x
+
+    - name: Restore Dependencies
+      run: dotnet restore Web/TicketSystemWEB/ticketsystemWeb/ticketsystemWeb.csproj
+
+    - name: Replace Tokens in index.html
+      run: |
+        $filePath = "Web/TicketSystemWEB/ticketsystemWeb/wwwroot/index.html"
+        (Get-Content $filePath) -replace "__DOMAIN__", "${{ env.DOMAIN }}" `
+                                 -replace "__API_TOKEN__", "${{ env.API_TOKEN }}" `
+        | Set-Content $filePath
+
+    - name: Build Web Project
+      run: dotnet build Web/TicketSystemWEB/ticketsystemWeb/ticketsystemWeb.csproj --configuration Release
+
+    - name: Publish Web Project
+      run: dotnet publish Web/TicketSystemWEB/ticketsystemWeb/ticketsystemWeb.csproj -c Release -o Web/TicketSystemWEB/ticketsystemWeb/publish
+
+    - name: Deploy to Azure Web App (PROD)
+      uses: azure/webapps-deploy@v2
+      with:
+        app-name: ci-cd-prod-build-web
+        publish-profile: ${{ secrets.AZURE_WEB_PUBLISH_PROFILE_PROD }}
+        package: Web/TicketSystemWEB/ticketsystemWeb/publish
