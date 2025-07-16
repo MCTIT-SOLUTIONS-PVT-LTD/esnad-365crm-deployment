@@ -5,11 +5,11 @@ on:
     branches:
       - dev
     paths:
-      - 'Solutions/**'   # Only trigger when solution zip is pushed
+      - 'Solutions/**'   # Trigger only if solution zip is pushed
   workflow_dispatch:
     inputs:
       solution:
-        description: "Unmanaged solution ZIP path"
+        description: "Unmanaged solution ZIP path (relative to repo root)"
         required: true
         default: "Solutions/EsnadCICD_1_0_0_0.zip"
 
@@ -18,44 +18,48 @@ jobs:
     runs-on: self-hosted
 
     steps:
-      - name: Hello World Test
-        run: echo "✅ GitHub Actions workflow has started successfully"
+      - name: ✅ GitHub Actions workflow started
+        run: echo "GitHub Actions workflow triggered successfully"
 
       - name: ⬇️ Checkout Code
         uses: actions/checkout@v3
 
-      - name: 📂 Show Files in Solutions Folder
+      - name: 📁 List Solution Files
         shell: pwsh
         run: |
-          Write-Host "📁 Listing contents of the Solutions folder:"
+          Write-Host "`n🔍 Listing contents of Solutions folder:"
           Get-ChildItem "${{ github.workspace }}/Solutions" | ForEach-Object { Write-Host $_.FullName }
 
       - name: 🛠 Import Unmanaged Solution to D365 On-Prem
         shell: pwsh
         run: |
-          Write-Host "📦 Setting variables"
+          Write-Host "`n📦 Preparing solution import variables"
 
-          # Get solution path (manual input or default)
-          $solutionPath = "${{ github.workspace }}/" + (${{
-            github.event.inputs.solution != '' && github.event.inputs.solution || 'Solutions/EsnadCICD_1_0_0_0.zip'
-          }})
+          # Handle path from input or default
+          $solutionInput = "${{ github.event.inputs.solution }}"
+          if ([string]::IsNullOrWhiteSpace($solutionInput)) {
+            $solutionInput = "Solutions/EsnadCICD_1_0_0_0.zip"
+          }
 
+          $solutionPath = Join-Path "${{ github.workspace }}" $solutionInput
+          Write-Host "`n📁 Full solution path: $solutionPath"
+
+          # CRM connection variables
           $crmUrl = "${{ vars.D365DEV_ENV_URL }}"
           $username = "${{ vars.D365DEV_USERNAME }}"
           $password = "${{ vars.D365DEV_PASSWORD }}"
 
+          # Connection String
           Write-Host "`n🔑 Building connection string"
           $connectionString = @"AuthType=IFD;Url=$crmUrl;Domain=crm-esnad.com;Username=$username;Password=$password;HomeRealmUri=https://sts1.crm-esnad.com/adfs/services/trust/13/usernamemixed;RequireNewInstance=true;"@
 
-          Write-Host "`n🔁 Importing solution from path: $solutionPath"
+          Write-Host "`n🔁 Importing solution: $solutionPath"
           Write-Host "🔒 Connecting to CRM: $crmUrl"
-          Write-Host "📡 Connection String:"; Write-Host $connectionString
 
           try {
-            Write-Host "🚀 Executing Import-CrmSolution"
             Import-CrmSolution -ConnectionString $connectionString -SolutionFilePath $solutionPath -PublishWorkflows:$true -Verbose
             Write-Host "✅ Solution import completed successfully"
           } catch {
-            Write-Error "❌ Import failed: $_"
+            Write-Error "❌ Solution import failed: $_"
             exit 1
           }
