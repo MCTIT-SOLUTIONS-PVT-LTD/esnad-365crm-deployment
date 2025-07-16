@@ -8,7 +8,7 @@ on:
       - 'Api/TicketSystemApi/**'
 
 jobs:
-  build-prod:
+  build-prod-api:
     runs-on: windows-latest
 
     env:
