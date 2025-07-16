@@ -3,7 +3,7 @@ name: 🚀 Deploy CRM Solution (On-Prem)
 on:
   push:
     branches:
-      - main
+      - DEV
     paths:
       - 'Solutions/**'
   workflow_dispatch:
