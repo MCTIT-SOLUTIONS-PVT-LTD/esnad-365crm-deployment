@@ -74,8 +74,5 @@ jobs:
 
           Write-Host "Publishing all customizations..."
           Publish-CrmAllCustomizations -ConnectionString $connectionString
-<<<<<<< HEAD
           Write-Host "Publish completed."
-=======
-          Write-Host "Publish completed."
->>>>>>> 281e20a0fd920a54a960833079223eba1c6cf6c1
+ 
