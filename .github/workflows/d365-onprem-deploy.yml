@@ -62,7 +62,7 @@ jobs:
                               Password=$Password;
                               HomeRealmUri=https://sts1.crm-esnad.com/adfs/services/trust/13/usernamemixed;
                               RequireNewInstance=true;
-                              "@
+                            "@
 
           Write-Host "Starting solution import..."
           Write-Host "Connection: $($connectionString.Substring(0,60))..."
