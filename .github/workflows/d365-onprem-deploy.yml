@@ -47,6 +47,13 @@ jobs:
       - name: Step 4 - Import Solution to Dynamics 365 On-Prem
         shell: powershell
         run: |
+          # Install the Dynamics 365 PowerShell module (if not already installed)
+          if (-not (Get-Module -ListAvailable -Name Microsoft.Xrm.Data.PowerShell)) {
+            Install-Module -Name Microsoft.Xrm.Data.PowerShell -Force -Scope CurrentUser
+          }
+
+          Import-Module Microsoft.Xrm.Data.PowerShell
+
           $solutionInput = "${{ github.event.inputs.solution }}"
           $solutionPath = if ($solutionInput) { $solutionInput } else { 'Solutions/EsnadCICD_1_0_0_0.zip' }
 
@@ -54,17 +61,15 @@ jobs:
           $username = "${{ vars.D365DEV_USERNAME }}"
           $password = "${{ vars.D365DEV_PASSWORD }}"
 
-
           $connectionString = @"
             AuthType=IFD;
-            Url=$CrmUrl;
+            Url=$crmUrl;
             Domain=crm-esnad.com;
-            Username=$Username;
-            Password=$Password;
+            Username=$username;
+            Password=$password;
             HomeRealmUri=https://sts1.crm-esnad.com/adfs/services/trust/13/usernamemixed;
             RequireNewInstance=true;
           "@
-
 
           Write-Host "Starting solution import..."
           Write-Host "Connection: $($connectionString.Substring(0,60))..."
@@ -77,6 +82,8 @@ jobs:
             -PublishWorkflows:$true
 
           Write-Host "Solution import completed successfully."
+
+
 
 
       - name: Step 5 - Publish All Customizations (Optional)
