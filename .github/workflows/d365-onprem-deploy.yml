@@ -45,30 +45,28 @@ jobs:
 
 
       - name: Step 4 - Import Solution to Dynamics 365 On-Prem
-  shell: powershell
-  run: |
-    $solutionInput = "${{ github.event.inputs.solution }}"
-    $solutionPath = if ($solutionInput) { $solutionInput } else { 'Solutions/EsnadCICD_1_0_0_0.zip' }
+        shell: powershell
+        run: |
+          $solutionInput = "${{ github.event.inputs.solution }}"
+          $solutionPath = if ($solutionInput) { $solutionInput } else { 'Solutions/EsnadCICD_1_0_0_0.zip' }
 
-    $crmUrl = "${{ vars.D365DEV_ENV_URL }}"
-    $username = "${{ vars.D365DEV_USERNAME }}"
-    $password = "${{ vars.D365DEV_PASSWORD }}"
+          $crmUrl = "${{ vars.D365DEV_ENV_URL }}"
+          $username = "${{ vars.D365DEV_USERNAME }}"
+          $password = "${{ vars.D365DEV_PASSWORD }}"
 
-    $connectionString = @"
-AuthType=IFD;Url=$crmUrl;Domain=crm-esnad.com;Username=$username;Password=$password;HomeRealmUri=https://sts1.crm-esnad.com/adfs/services/trust/13/usernamemixed;RequireNewInstance=true;
-"@
+          $connectionString = @"AuthType=IFD;Url=$crmUrl;Domain=crm-esnad.com;Username=$username;Password=$password;HomeRealmUri=https://sts1.crm-esnad.com/adfs/services/trust/13/usernamemixed;RequireNewInstance=true;"@
 
-    Write-Host "Starting solution import..."
-    Write-Host "Connection: $($connectionString.Substring(0,60))..."
-    Write-Host "Solution Path: $solutionPath"
+          Write-Host "Starting solution import..."
+          Write-Host "Connection: $($connectionString.Substring(0,60))..."
+          Write-Host "Solution Path: $solutionPath"
 
-    Import-CrmSolution `
-      -ConnectionString $connectionString `
-      -SolutionFilePath $solutionPath `
-      -OverwriteUnmanagedCustomizations:$true `
-      -PublishWorkflows:$true
+          Import-CrmSolution `
+            -ConnectionString $connectionString `
+            -SolutionFilePath $solutionPath `
+            -OverwriteUnmanagedCustomizations:$true `
+            -PublishWorkflows:$true
 
-    Write-Host "Solution import completed successfully."
+          Write-Host "Solution import completed successfully."
 
 
       - name: Step 5 - Publish All Customizations (Optional)
