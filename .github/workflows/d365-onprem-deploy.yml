@@ -1,0 +1,28 @@
+name: Deploy D365 Unmanaged Solution (On-Prem)
+
+on:
+  workflow_dispatch:
+    inputs:
+      solution:
+        description: "Unmanaged solution ZIP path"
+        required: true
+        default: "Solutions/EsnadCICD_1_0_0_0.zip"
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+
+    steps:
+      - name: ⬇️ Checkout Code
+        uses: actions/checkout@v3
+
+      - name: 🛠 Import Unmanaged Solution to D365 On-Prem
+        shell: pwsh
+        run: |
+          $solutionPath = "${{ github.workspace }}/${{ github.event.inputs.solution }}"
+          $scriptPath = "${{ github.workspace }}/scripts/Import-D365Solution.ps1"
+          pwsh -File $scriptPath `
+            -crmUrl "${{ vars.D365DEV_ENV_URL }}" `
+            -username "${{ vars.D365DEV_USERNAME }}" `
+            -password "${{ vars.D365DEV_PASSWORD }}" `
+            -solutionPath $solutionPath
