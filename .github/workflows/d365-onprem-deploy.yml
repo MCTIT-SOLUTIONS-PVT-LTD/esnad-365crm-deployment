@@ -47,12 +47,13 @@ jobs:
       - name: Step 4 - Import Solution to Dynamics 365 On-Prem
         shell: powershell
         run: |
-          # Install and import module
-          if (-not (Get-Module -ListAvailable -Name Microsoft.Xrm.Data.PowerShell)) {
-            Install-Module -Name Microsoft.Xrm.Data.PowerShell -Force -Scope CurrentUser
+          # Install and import the correct CRM PowerShell module
+          if (-not (Get-Module -ListAvailable -Name Microsoft.Xrm.Tooling.CrmConnector.PowerShell)) {
+            Install-Module -Name Microsoft.Xrm.Tooling.CrmConnector.PowerShell -Force -Scope CurrentUser
           }
-          Import-Module Microsoft.Xrm.Data.PowerShell
+          Import-Module Microsoft.Xrm.Tooling.CrmConnector.PowerShell
 
+          # Get inputs and credentials
           $solutionInput = "${{ github.event.inputs.solution }}"
           $solutionPath = if ($solutionInput) { $solutionInput } else { 'Solutions/EsnadCICD_1_0_0_0.zip' }
 
@@ -63,12 +64,14 @@ jobs:
           $securePass = ConvertTo-SecureString $password -AsPlainText -Force
           $cred = New-Object System.Management.Automation.PSCredential ($username, $securePass)
 
+          # Connect to CRM
           $connection = Get-CrmConnection `
             -ServerUrl $crmUrl `
             -Credential $cred `
             -AuthType IFD `
             -HomeRealmUri "https://sts1.crm-esnad.com/adfs/services/trust/13/usernamemixed"
 
+          # Import solution
           Write-Host "Starting solution import..."
           Write-Host "Solution Path: $solutionPath"
 
@@ -78,11 +81,7 @@ jobs:
             -OverwriteUnmanagedCustomizations:$true `
             -PublishWorkflows:$true
 
-          Write-Host "✅ Solution import completed successfully."
-
-
-
-
+          Write-Host "Solution import completed successfully."
 
 
       - name: Step 5 - Publish All Customizations (Optional)
