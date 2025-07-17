@@ -88,21 +88,27 @@ jobs:
       - name: Step 5 - Publish All Customizations (Optional)
         shell: powershell
         run: |
+          # Install and import correct module
+          if (-not (Get-Module -ListAvailable -Name Microsoft.Xrm.Data.PowerShell)) {
+            Install-Module -Name Microsoft.Xrm.Data.PowerShell -Force -Scope CurrentUser -AllowClobber
+          }
+          Import-Module Microsoft.Xrm.Data.PowerShell
+
           $crmUrl = "${{ vars.D365DEV_ENV_URL }}"
           $username = "${{ vars.D365DEV_USERNAME }}"
           $password = "${{ vars.D365DEV_PASSWORD }}"
 
-          $connection = Get-CrmConnection -ConnectionString @"
-          AuthType=IFD;
-          Url=$crmUrl;
-          Domain=crm-esnad.com;
-          Username=$username;
-          Password=$password;
-          HomeRealmUri=https://sts1.crm-esnad.com/adfs/services/trust/13/usernamemixed;
-          RequireNewInstance=true
-          "@
+          $securePass = ConvertTo-SecureString $password -AsPlainText -Force
+          $cred = New-Object System.Management.Automation.PSCredential ($username, $securePass)
+
+          $connection = Get-CrmConnection `
+            -ServerUrl $crmUrl `
+            -Credential $cred `
+            -AuthType IFD `
+            -HomeRealmUri "https://sts1.crm-esnad.com/adfs/services/trust/13/usernamemixed"
 
           Write-Host "Publishing all customizations..."
-          Publish-CrmAllCustomizations -ConnectionString $connectionString
+          Publish-CrmAllCustomizations -conn $connection
           Write-Host "Publish completed."
+
  
