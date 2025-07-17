@@ -63,7 +63,11 @@ jobs:
           $securePass = ConvertTo-SecureString $password -AsPlainText -Force
           $cred = New-Object System.Management.Automation.PSCredential ($username, $securePass)
 
-          $connection = Get-CrmConnection -ServerUrl $crmUrl -Credential $cred -AuthType IFD -HomeRealmUri "https://sts1.crm-esnad.com/adfs/services/trust/13/usernamemixed"
+          $connection = Get-CrmConnection `
+            -ServerUrl $crmUrl `
+            -Credential $cred `
+            -AuthType IFD `
+            -HomeRealmUri "https://sts1.crm-esnad.com/adfs/services/trust/13/usernamemixed"
 
           Write-Host "Starting solution import..."
           Write-Host "Solution Path: $solutionPath"
@@ -75,6 +79,7 @@ jobs:
             -PublishWorkflows:$true
 
           Write-Host "✅ Solution import completed successfully."
+
 
 
 
