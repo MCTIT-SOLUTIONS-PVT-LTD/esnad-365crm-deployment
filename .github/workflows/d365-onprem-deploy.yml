@@ -47,11 +47,10 @@ jobs:
       - name: Step 4 - Import Solution to Dynamics 365 On-Prem
         shell: powershell
         run: |
-          # Install the Dynamics 365 PowerShell module (if not already installed)
+          # Install and import module
           if (-not (Get-Module -ListAvailable -Name Microsoft.Xrm.Data.PowerShell)) {
             Install-Module -Name Microsoft.Xrm.Data.PowerShell -Force -Scope CurrentUser
           }
-
           Import-Module Microsoft.Xrm.Data.PowerShell
 
           $solutionInput = "${{ github.event.inputs.solution }}"
@@ -61,27 +60,22 @@ jobs:
           $username = "${{ vars.D365DEV_USERNAME }}"
           $password = "${{ vars.D365DEV_PASSWORD }}"
 
-          $connectionString = @"
-            AuthType=IFD;
-            Url=$crmUrl;
-            Domain=crm-esnad.com;
-            Username=$username;
-            Password=$password;
-            HomeRealmUri=https://sts1.crm-esnad.com/adfs/services/trust/13/usernamemixed;
-            RequireNewInstance=true;
-          "@
+          $securePass = ConvertTo-SecureString $password -AsPlainText -Force
+          $cred = New-Object System.Management.Automation.PSCredential ($username, $securePass)
+
+          $connection = Get-CrmConnection -ServerUrl $crmUrl -Credential $cred -AuthType IFD -HomeRealmUri "https://sts1.crm-esnad.com/adfs/services/trust/13/usernamemixed"
 
           Write-Host "Starting solution import..."
-          Write-Host "Connection: $($connectionString.Substring(0,60))..."
           Write-Host "Solution Path: $solutionPath"
 
           Import-CrmSolution `
-            -ConnectionString $connectionString `
+            -conn $connection `
             -SolutionFilePath $solutionPath `
             -OverwriteUnmanagedCustomizations:$true `
             -PublishWorkflows:$true
 
-          Write-Host "Solution import completed successfully."
+          Write-Host "✅ Solution import completed successfully."
+
 
 
 
