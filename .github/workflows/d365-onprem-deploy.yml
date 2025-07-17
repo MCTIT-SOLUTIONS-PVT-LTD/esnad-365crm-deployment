@@ -80,8 +80,7 @@ jobs:
             -conn $connection `
             -SolutionFilePath $solutionPath `
             -OverwriteUnmanagedCustomizations:$true `
-            -PublishWorkflows:$true
-
+            
           Write-Host "Solution import completed successfully."
 
 
