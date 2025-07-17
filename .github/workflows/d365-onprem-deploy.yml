@@ -31,13 +31,18 @@ jobs:
         shell: powershell
         run: |
           $solutionInput = "${{ github.event.inputs.solution }}"
-          $solutionPath = if ($solutionInput) { $solutionInput } else { 'Solutions/EsnadCICD_1_0_0_1.zip' }
+          if ([string]::IsNullOrWhiteSpace($solutionInput)) {
+            $solutionInput = "EsnadCICD_1_0_0_0.zip"   # Your actual file name
+          }
+          $solutionPath = Join-Path -Path "Solutions" -ChildPath $solutionInput
           Write-Host "Checking for solution file at: $solutionPath"
           if (-not (Test-Path $solutionPath)) {
             throw "Solution file not found: $solutionPath"
           } else {
             Write-Host "Solution file found: $solutionPath"
           }
+
+
 
       - name: Step 4 - Import Solution to Dynamics 365 On-Prem
         shell: powershell
