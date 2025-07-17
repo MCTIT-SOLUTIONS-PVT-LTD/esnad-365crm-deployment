@@ -15,31 +15,31 @@ on:
 
 jobs:
   deploy-crm:
-    runs-on: self-hosted  # 👈 This uses your self-hosted GitHub Actions runner
+    runs-on: self-hosted  # This uses your self-hosted GitHub Actions runner
 
     steps:
-      - name: ⬇️ Step 1 - Checkout Repository
+      - name: ⬇Step 1 - Checkout Repository
         uses: actions/checkout@v3
 
-      - name: 🔍 Step 2 - Show Working Directory and Files
+      - name: Step 2 - Show Working Directory and Files
         shell: powershell
         run: |
-          Write-Host "📂 Working Directory: $PWD"
+          Write-Host "Working Directory: $PWD"
           Get-ChildItem -Recurse
 
-      - name: ✅ Step 3 - Verify Solution File Exists
+      - name: Step 3 - Verify Solution File Exists
         shell: powershell
         run: |
           $solutionInput = "${{ github.event.inputs.solution }}"
           $solutionPath = if ($solutionInput) { $solutionInput } else { 'Solutions/EsnadCICD_1_0_0_1.zip' }
-          Write-Host "🔎 Checking for solution file at: $solutionPath"
+          Write-Host "Checking for solution file at: $solutionPath"
           if (-not (Test-Path $solutionPath)) {
-            throw "❌ Solution file not found: $solutionPath"
+            throw "Solution file not found: $solutionPath"
           } else {
-            Write-Host "✅ Solution file found: $solutionPath"
+            Write-Host "Solution file found: $solutionPath"
           }
 
-      - name: 🛠 Step 4 - Import Solution to Dynamics 365 On-Prem
+      - name: Step 4 - Import Solution to Dynamics 365 On-Prem
         shell: powershell
         run: |
           $solutionInput = "${{ github.event.inputs.solution }}"
@@ -51,9 +51,9 @@ jobs:
 
           $connectionString = @"AuthType=IFD;Url=$crmUrl;Domain=crm-esnad.com;Username=$username;Password=$password;HomeRealmUri=https://sts1.crm-esnad.com/adfs/services/trust/13/usernamemixed;RequireNewInstance=true;"@
 
-          Write-Host "📦 Starting solution import..."
-          Write-Host "🔗 Connection: $($connectionString.Substring(0,60))..."
-          Write-Host "📁 Solution Path: $solutionPath"
+          Write-Host "Starting solution import..."
+          Write-Host "Connection: $($connectionString.Substring(0,60))..."
+          Write-Host "Solution Path: $solutionPath"
 
           Import-CrmSolution `
             -ConnectionString $connectionString `
@@ -61,9 +61,9 @@ jobs:
             -OverwriteUnmanagedCustomizations:$true `
             -PublishWorkflows:$true
 
-          Write-Host "✅ Solution import completed successfully."
+          Write-Host "Solution import completed successfully."
 
-      - name: 📢 Step 5 - Publish All Customizations (Optional)
+      - name: Step 5 - Publish All Customizations (Optional)
         shell: powershell
         run: |
           $crmUrl = "${{ vars.D365DEV_ENV_URL }}"
@@ -72,6 +72,6 @@ jobs:
 
           $connectionString = @"AuthType=IFD;Url=$crmUrl;Domain=crm-esnad.com;Username=$username;Password=$password;HomeRealmUri=https://sts1.crm-esnad.com/adfs/services/trust/13/usernamemixed;RequireNewInstance=true;"@
 
-          Write-Host "🚀 Publishing all customizations..."
+          Write-Host "Publishing all customizations..."
           Publish-CrmAllCustomizations -ConnectionString $connectionString
-          Write-Host "✅ Publish completed."
+          Write-Host "Publish completed."
