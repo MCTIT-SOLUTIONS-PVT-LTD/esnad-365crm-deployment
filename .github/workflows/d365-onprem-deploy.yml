@@ -22,13 +22,13 @@ jobs:
         uses: actions/checkout@v3
 
       - name: 🔍 Step 2 - Show Working Directory and Files
-        shell: pwsh
+        shell: powershell
         run: |
           Write-Host "📂 Working Directory: $PWD"
           Get-ChildItem -Recurse
 
       - name: ✅ Step 3 - Verify Solution File Exists
-        shell: pwsh
+        shell: powershell
         run: |
           $solutionInput = "${{ github.event.inputs.solution }}"
           $solutionPath = if ($solutionInput) { $solutionInput } else { 'Solutions/EsnadCICD_1_0_0_1.zip' }
@@ -40,7 +40,7 @@ jobs:
           }
 
       - name: 🛠 Step 4 - Import Solution to Dynamics 365 On-Prem
-        shell: pwsh
+        shell: powershell
         run: |
           $solutionInput = "${{ github.event.inputs.solution }}"
           $solutionPath = if ($solutionInput) { $solutionInput } else { 'Solutions/EsnadCICD_1_0_0_1.zip' }
@@ -64,7 +64,7 @@ jobs:
           Write-Host "✅ Solution import completed successfully."
 
       - name: 📢 Step 5 - Publish All Customizations (Optional)
-        shell: pwsh
+        shell: powershell
         run: |
           $crmUrl = "${{ vars.D365DEV_ENV_URL }}"
           $username = "${{ vars.D365DEV_USERNAME }}"
