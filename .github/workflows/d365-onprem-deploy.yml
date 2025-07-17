@@ -92,7 +92,15 @@ jobs:
           $username = "${{ vars.D365DEV_USERNAME }}"
           $password = "${{ vars.D365DEV_PASSWORD }}"
 
-          $connectionString = @"AuthType=IFD;Url=$crmUrl;Domain=crm-esnad.com;Username=$username;Password=$password;HomeRealmUri=https://sts1.crm-esnad.com/adfs/services/trust/13/usernamemixed;RequireNewInstance=true;"@
+          $connection = Get-CrmConnection -ConnectionString @"
+          AuthType=IFD;
+          Url=$crmUrl;
+          Domain=crm-esnad.com;
+          Username=$username;
+          Password=$password;
+          HomeRealmUri=https://sts1.crm-esnad.com/adfs/services/trust/13/usernamemixed;
+          RequireNewInstance=true
+          "@
 
           Write-Host "Publishing all customizations..."
           Publish-CrmAllCustomizations -ConnectionString $connectionString
