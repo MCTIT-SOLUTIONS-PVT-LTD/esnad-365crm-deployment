@@ -112,7 +112,7 @@ jobs:
           "@
 
           Write-Host "Publishing all customizations..."
-          Publish-CrmAllCustomizations -conn $connection
+          Publish-CrmCustomization -conn $connection
           Write-Host "Publish completed."
 
  
