@@ -47,12 +47,20 @@ jobs:
       - name: Step 4 - Import Solution to Dynamics 365 On-Prem
         shell: powershell
         run: |
+          # Suppress confirmation prompts
+          $ConfirmPreference = 'None'
+
+          # Ensure NuGet provider is available
+          Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force -Scope CurrentUser
+
           # Install and import correct CRM PowerShell module
           if (-not (Get-Module -ListAvailable -Name Microsoft.Xrm.Tooling.CrmConnector.PowerShell)) {
             Install-Module -Name Microsoft.Xrm.Tooling.CrmConnector.PowerShell -Force -Scope CurrentUser -AllowClobber
           }
+
           Import-Module Microsoft.Xrm.Tooling.CrmConnector.PowerShell
 
+          # Parameters
           $solutionInput = "${{ github.event.inputs.solution }}"
           $solutionPath = if ($solutionInput) { $solutionInput } else { 'Solutions/EsnadCICD_1_0_0_0.zip' }
 
@@ -73,15 +81,15 @@ jobs:
           RequireNewInstance=true
           "@
 
-          Write-Host "Starting solution import..."
-          Write-Host "Solution Path: $solutionPath"
+          Write-Host " Starting solution import..."
+          Write-Host " Solution Path: $solutionPath"
 
           Import-CrmSolution `
             -conn $connection `
             -SolutionFilePath $solutionPath `
-            -OverwriteUnmanagedCustomizations:$true `
-            
-          Write-Host "Solution import completed successfully."
+            -OverwriteUnmanagedCustomizations:$true
+
+          Write-Host " Solution import completed successfully."
 
 
 
