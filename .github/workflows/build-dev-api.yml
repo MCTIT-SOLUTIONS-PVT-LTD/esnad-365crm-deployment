@@ -38,7 +38,7 @@ jobs:
           -replace '__API_BEARER_TOKEN__', "$env:API_BEARER_TOKEN" `
           -replace '__REPORT_DATA_TOKEN__', "$env:REPORT_DATA_TOKEN" `
           -replace '__REPORT_DATA_TOKEN1__', "$env:REPORT_DATA_TOKEN1" `
-	  -replace '__REPORT_DATA_TOKEN2__', "$env:REPORT_DATA_TOKEN2" `
+          -replace '__REPORT_DATA_TOKEN2__', "$env:REPORT_DATA_TOKEN2" `
           -replace '__CRM_USERNAME__', "$env:CRM_USERNAME" `
           -replace '__CRM_PASSWORD__', "$env:CRM_PASSWORD" |
           Set-Content $file
