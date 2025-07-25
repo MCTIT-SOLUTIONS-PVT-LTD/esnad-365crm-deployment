@@ -19,7 +19,8 @@
                 var allowedTokens = new List<string>
                 {
                     System.Configuration.ConfigurationManager.AppSettings["ReportDataToken"],
-                    System.Configuration.ConfigurationManager.AppSettings["ReportDataToken1"]
+                    System.Configuration.ConfigurationManager.AppSettings["ReportDataToken1"],
+                    System.Configuration.ConfigurationManager.AppSettings["ReportDataToken2"] // ✅ Added new token
                 };
 
                 string token = "";
