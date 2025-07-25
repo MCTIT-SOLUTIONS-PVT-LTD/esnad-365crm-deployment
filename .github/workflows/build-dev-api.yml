@@ -19,6 +19,7 @@ jobs:
       API_BEARER_TOKEN: ${{ vars.API_BEARER_TOKEN_DEV }}
       REPORT_DATA_TOKEN: ${{ vars.REPORT_DATA_TOKEN_DEV }}
       REPORT_DATA_TOKEN1: ${{ vars.REPORT_DATA_TOKEN1_DEV }}
+      REPORT_DATA_TOKEN2: ${{ vars.REPORT_DATA_TOKEN2_DEV }}
       CRM_USERNAME: ${{ vars.D365DEV_USERNAME }}
       CRM_PASSWORD: ${{ vars.D365DEV_PASSWORD }}
 
@@ -37,6 +38,7 @@ jobs:
           -replace '__API_BEARER_TOKEN__', "$env:API_BEARER_TOKEN" `
           -replace '__REPORT_DATA_TOKEN__', "$env:REPORT_DATA_TOKEN" `
           -replace '__REPORT_DATA_TOKEN1__', "$env:REPORT_DATA_TOKEN1" `
+	  -replace '__REPORT_DATA_TOKEN2__', "$env:REPORT_DATA_TOKEN2" `
           -replace '__CRM_USERNAME__', "$env:CRM_USERNAME" `
           -replace '__CRM_PASSWORD__', "$env:CRM_PASSWORD" |
           Set-Content $file
