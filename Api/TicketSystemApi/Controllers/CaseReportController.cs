@@ -48,7 +48,7 @@
                         "new_ticketclosuredate", "new_description", "new_ticketsubmissionchannel",
                         "new_businessunitid", "createdby", "modifiedby", "ownerid", "customerid",
                         "new_tickettype", "new_mainclassification", "new_subclassificationitem",
-                        "new_isreopened" // ✅ Removed new_comment 123
+                        "new_isreopened" // ✅ Removed new_comment 333
                     ),
                     PageInfo = new PagingInfo
                     {
