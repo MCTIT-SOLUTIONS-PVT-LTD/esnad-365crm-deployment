@@ -48,7 +48,7 @@ public class CaseReportController : ApiController
                     "new_ticketclosuredate", "new_description", "new_ticketsubmissionchannel",
                     "new_businessunitid", "createdby", "modifiedby", "ownerid", "customerid",
                     "new_tickettype", "new_mainclassification", "new_subclassificationitem",
-                    "new_isreopened"
+                    "new_isreopened" // ✅ Removed new_comment
                 ),
                 PageInfo = new PagingInfo
                 {
@@ -56,7 +56,6 @@ public class CaseReportController : ApiController
                     Count = (!pageSize.HasValue || pageSize.Value <= 0) ? int.MaxValue : pageSize.Value,
                     PagingCookie = null
                 }
-
             };
 
             query.Orders.Add(new OrderExpression("createdon", OrderType.Descending));
@@ -72,7 +71,7 @@ public class CaseReportController : ApiController
             }
             else if (filter.ToLower() == "weekly")
             {
-                ksaStart = ksaNow.Date.AddDays(-7); // ✅ Last 7 days, not week start
+                ksaStart = ksaNow.Date.AddDays(-7); // ✅ Last 7 days
                 query.Criteria.AddCondition("createdon", ConditionOperator.OnOrAfter, ksaStart);
             }
             else if (filter.ToLower() == "monthly")
@@ -117,9 +116,12 @@ public class CaseReportController : ApiController
                     Priority = e.FormattedValues.Contains("prioritycode") ? e.FormattedValues["prioritycode"] : null,
                     ClosedOn = ConvertToKsaTime(e.GetAttributeValue<DateTime?>("new_ticketclosuredate")),
                     ResolutionDateTime = GetResolutionDateTime(e),
-                    CustomerSatisfactionScore = csat.Score,
-                    CustomerComment = csat.Comment,
-                    AppropriateTimeTaken = csat.AppropriateTimeTaken,
+
+                    Customer_Satisfaction_Score = csat.Comment,
+                    How_Satisfied_Are_You_With_How_The_Ticket_Was_Handled = csat.Score,
+                    Was_the_Time_Taken_to_process_the_ticket_Appropriate = csat.AppropriateTimeTaken,
+                    How_can_we_Improve_the_ticket_processing_experience = csat.ImprovementComment, // ✅ Updated
+
                     IsReopened = string.IsNullOrWhiteSpace(e.GetAttributeValue<string>("new_isreopened")) ? "No" : e.GetAttributeValue<string>("new_isreopened"),
                     SlaViolation = GetSlaViolationStatus(service, e.Id),
                     AssignmentTimeByKPI = slaDetails["AssignmentTimeByKPI"]?.ToString(),
@@ -209,11 +211,11 @@ public class CaseReportController : ApiController
         return "No";
     }
 
-    private (int? Score, string Comment, string AppropriateTimeTaken) GetCustomerSatisfactionFeedback(IOrganizationService service, Guid caseId)
+    private (int? Score, string Comment, string AppropriateTimeTaken, string ImprovementComment) GetCustomerSatisfactionFeedback(IOrganizationService service, Guid caseId)
     {
         var query = new QueryExpression("new_customersatisfactionscore")
         {
-            ColumnSet = new ColumnSet("new_customersatisfactionrating", "new_customersatisfactionscore", "new_wasthetimetakentoprocesstheticketappropri"),
+            ColumnSet = new ColumnSet("new_customersatisfactionrating", "new_customersatisfactionscore", "new_wasthetimetakentoprocesstheticketappropri", "new_comment"),
             Criteria = new FilterExpression
             {
                 Conditions = { new ConditionExpression("new_csatcase", ConditionOperator.Equal, caseId) }
@@ -223,10 +225,11 @@ public class CaseReportController : ApiController
         var result = service.RetrieveMultiple(query);
         var record = result.Entities.FirstOrDefault();
         if (record == null)
-            return (null, null, null);
+            return (null, null, null, null);
 
         var score = record.GetAttributeValue<OptionSetValue>("new_customersatisfactionrating")?.Value;
         var comment = record.GetAttributeValue<string>("new_customersatisfactionscore");
+        var improvementComment = record.GetAttributeValue<string>("new_comment");
 
         string appropriateTimeTaken = null;
         if (record.Attributes.Contains("new_wasthetimetakentoprocesstheticketappropri"))
@@ -235,7 +238,7 @@ public class CaseReportController : ApiController
             appropriateTimeTaken = timeTaken.HasValue ? (timeTaken.Value ? "Yes" : "No") : null;
         }
 
-        return (score, comment, appropriateTimeTaken);
+        return (score, comment, appropriateTimeTaken, improvementComment);
     }
 
     private string MapStatusCodeToStage(Entity ticket)
