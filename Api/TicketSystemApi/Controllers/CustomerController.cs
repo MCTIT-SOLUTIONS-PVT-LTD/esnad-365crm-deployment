@@ -63,8 +63,40 @@ namespace TicketSystemApi.Controllers
                 if (!incident.Contains("customerid") || !(incident["customerid"] is EntityReference customerRef))
                     return Ok(ApiResponse<object>.Error("Customer is not linked with the specified case."));
 
-                var customer = service.Retrieve("contact", customerRef.Id,
-                    new ColumnSet("firstname", "lastname", "emailaddress1"));
+                Entity customer = null;
+
+                // Check whether the reference is Contact or Account
+                if (customerRef.LogicalName == "contact")
+                {
+                    try
+                    {
+                        customer = service.Retrieve("contact", customerRef.Id,
+                            new ColumnSet("firstname", "lastname", "emailaddress1"));
+                    }
+                    catch (Exception)
+                    {
+                        return Ok(ApiResponse<object>.Error("Customer record (Contact) does not exist."));
+                    }
+                }
+                else if (customerRef.LogicalName == "account")
+                {
+                    try
+                    {
+                        customer = service.Retrieve("account", customerRef.Id,
+                            new ColumnSet("name", "emailaddress1"));
+                    }
+                    catch (Exception)
+                    {
+                        return Ok(ApiResponse<object>.Error("Customer record (Account) does not exist."));
+                    }
+                }
+                else
+                {
+                    return Ok(ApiResponse<object>.Error($"Unsupported customer type: {customerRef.LogicalName}"));
+                }
+
+                if (customer == null)
+                    return Ok(ApiResponse<object>.Error("Customer record could not be retrieved."));
 
                 if (customer == null)
                     return Ok(ApiResponse<object>.Error("Customer record could not be retrieved."));
@@ -94,10 +126,15 @@ namespace TicketSystemApi.Controllers
                     CaseId = incident.Id,
                     TicketNumber = ticketNumber,
                     CustomerId = customer.Id,
-                    FirstName = customer.GetAttributeValue<string>("firstname"),
-                    LastName = customer.GetAttributeValue<string>("lastname"),
+                    FirstName = (customerRef.LogicalName == "contact") ? customer.GetAttributeValue<string>("firstname") : null,
+                    LastName = (customerRef.LogicalName == "contact") ? customer.GetAttributeValue<string>("lastname") : null,
+                    FullName = (customerRef.LogicalName == "account") ? customer.GetAttributeValue<string>("name") : null,
+                    DisplayName = (customerRef.LogicalName == "contact")
+                        ? $"{customer.GetAttributeValue<string>("firstname")} {customer.GetAttributeValue<string>("lastname")}".Trim()
+                        : customer.GetAttributeValue<string>("name"),
                     Email = customer.GetAttributeValue<string>("emailaddress1")
                 }, "Customer retrieved successfully"));
+
             }
             catch (Exception ex)
             {
