@@ -289,8 +289,8 @@
 
     <script>
         // ✅ Replace these at build time in GitHub Actions
-        const domain = "__DOMAIN__";
-        const token = "__API_TOKEN__";
+        //const domain = "__DOMAIN__";
+        //const token = "__API_TOKEN__";
 
         console.log("domain := "+ domain);
         console.log("token := "+ token);
@@ -446,7 +446,7 @@
                 const user = response.Data;
                 caseId = user.CaseId;
                 document.getElementById("ticketNumber").innerText = `${translations["ar"].ticketNumber}: ${user.TicketNumber}`;
-                document.getElementById("userName").innerText = `${user.FirstName} ${user.LastName}`;
+                document.getElementById("userName").innerText = `${user.DisplayName}`;
             } else if (response.Message?.includes("already submitted")) {
                 document.getElementById("formSection").style.display = "none";
                 document.getElementById("errorSection").style.display = "block";
