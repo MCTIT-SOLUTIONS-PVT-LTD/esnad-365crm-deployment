@@ -110,14 +110,13 @@ public class CaseReportController : ApiController
                     //    ? (e.GetAttributeValue<DateTime>("new_ticketclosuredate") - e.GetAttributeValue<DateTime>("createdon")).ToString(@"hh\:mm\:ss")
                     //    : null,
 
-
-                    TotalTicketDuration = CalculateDurationFormatted(e),
-
+                    TotalResolutionTime = CalculateDurationFormatted(e),
 
                     Description = e.GetAttributeValue<string>("new_description"),
                     ModifiedBy = e.GetAttributeValue<EntityReference>("modifiedby")?.Name,
                     Priority = e.FormattedValues.Contains("prioritycode") ? e.FormattedValues["prioritycode"] : null,
                     //ClosedOn = ConvertToKsaTime(e.GetAttributeValue<DateTime?>("new_ticketclosuredate")),
+
                     ResolutionDateTime = GetResolutionDateTime(e),
 
                     Customer_Satisfaction_Score = csat.Comment,
@@ -126,29 +125,31 @@ public class CaseReportController : ApiController
                     How_can_we_Improve_the_ticket_processing_experience = csat.ImprovementComment,
 
                     IsReopened = string.IsNullOrWhiteSpace(e.GetAttributeValue<string>("new_isreopened")) ? "No" : e.GetAttributeValue<string>("new_isreopened"),
-                    ReopenedOn = ConvertToKsaTime(e.GetAttributeValue<DateTime?>("new_reopendatetime")),
-
-                    CurrentStage = currentStage,
-                    EscalationLevel = escalationLevel,
-
 
                     SlaViolation = GetSlaViolationStatus(service, e.Id),
 
                     AssignmentTimeByKPI = slaDetails.ContainsKey("AssignmentTimeByKPI") ? slaDetails["AssignmentTimeByKPI"]["Status"] : null,
+                    ProcessingTimeByKPI = slaDetails.ContainsKey("ProcessingTimeByKPI") ? slaDetails["ProcessingTimeByKPI"]["Status"] : null,
+                    SolutionVerificationTimeByKPI = slaDetails.ContainsKey("SolutionVerificationTimeByKPI") ? slaDetails["SolutionVerificationTimeByKPI"]["Status"] : null,
+
+                    CurrentStage = currentStage,
+                    EscalationLevel = escalationLevel,
+
+                    ReopenedOn = ConvertToKsaTime(e.GetAttributeValue<DateTime?>("new_reopendatetime")),
+
+
+
                     AssignmentWarningTime = slaDetails.ContainsKey("AssignmentTimeByKPI") ? slaDetails["AssignmentTimeByKPI"]["WarningTime"] : null,
                     AssignmentFailureTime = slaDetails.ContainsKey("AssignmentTimeByKPI") ? slaDetails["AssignmentTimeByKPI"]["FailureTime"] : null,
                     AssignmentSucceededOn = slaDetails.ContainsKey("AssignmentTimeByKPI") ? slaDetails["AssignmentTimeByKPI"]["SucceededOn"] : null,
 
-                    ProcessingTimeByKPI = slaDetails.ContainsKey("ProcessingTimeByKPI") ? slaDetails["ProcessingTimeByKPI"]["Status"] : null,
                     ProcessingWarningTime = slaDetails.ContainsKey("ProcessingTimeByKPI") ? slaDetails["ProcessingTimeByKPI"]["WarningTime"] : null,
                     ProcessingFailureTime = slaDetails.ContainsKey("ProcessingTimeByKPI") ? slaDetails["ProcessingTimeByKPI"]["FailureTime"] : null,
                     ProcessingSucceededOn = slaDetails.ContainsKey("ProcessingTimeByKPI") ? slaDetails["ProcessingTimeByKPI"]["SucceededOn"] : null,
 
-                    SolutionVerificationTimeByKPI = slaDetails.ContainsKey("SolutionVerificationTimeByKPI") ? slaDetails["SolutionVerificationTimeByKPI"]["Status"] : null,
                     SolutionVerificationWarningTime = slaDetails.ContainsKey("SolutionVerificationTimeByKPI") ? slaDetails["SolutionVerificationTimeByKPI"]["WarningTime"] : null,
                     SolutionVerificationFailureTime = slaDetails.ContainsKey("SolutionVerificationTimeByKPI") ? slaDetails["SolutionVerificationTimeByKPI"]["FailureTime"] : null,
                     SolutionVerificationSucceededOn = slaDetails.ContainsKey("SolutionVerificationTimeByKPI") ? slaDetails["SolutionVerificationTimeByKPI"]["SucceededOn"] : null,
-
 
                 };
             }).ToList();
@@ -161,17 +162,19 @@ public class CaseReportController : ApiController
         }
     }
 
-    private string ConvertToKsaTime(DateTime? utcDateTime)
+    private DateTime? ConvertToKsaTime(DateTime? utcDate)
     {
-        if (utcDateTime == null) return null;
-        var ksaTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Arab Standard Time");
-        var ksaTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(utcDateTime.Value, DateTimeKind.Utc), ksaTimeZone);
-        return ksaTime.ToString("yyyy-MM-dd HH:mm:ss");
+        if (!utcDate.HasValue)
+            return null;
+
+        TimeZoneInfo ksaZone = TimeZoneInfo.FindSystemTimeZoneById("Arab Standard Time");
+        return TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(utcDate.Value, DateTimeKind.Utc), ksaZone);
     }
 
-    private string GetResolutionDateTime(Entity incident)
+    private DateTime? GetResolutionDateTime(Entity incident)
     {
         var resolvedStatusCodes = new HashSet<int> { 5, 6, 100000003, 100000007, 2000 };
+
         if (incident.Contains("new_ticketclosuredate") && incident["new_ticketclosuredate"] is DateTime closure)
             return ConvertToKsaTime(closure);
 
@@ -182,7 +185,6 @@ public class CaseReportController : ApiController
 
         return null;
     }
-
     private Dictionary<string, Dictionary<string, object>> GetSlaDetailsWithTimestamps(IOrganizationService service, Guid caseId)
     {
         var query = new QueryExpression("slakpiinstance")
@@ -335,25 +337,17 @@ public class CaseReportController : ApiController
     }
     private string CalculateDurationFormatted(Entity incident)
     {
-        DateTime? createdOnUtc = incident.GetAttributeValue<DateTime?>("createdon");
-        DateTime? resolvedOnUtc = null;
+        // Convert CreatedOn to KSA
+        DateTime? createdOn = ConvertToKsaTime(incident.GetAttributeValue<DateTime?>("createdon"));
+        DateTime? resolvedOn = GetResolutionDateTime(incident);
 
-        // Get resolution date in UTC
-        if (incident.Contains("new_ticketclosuredate"))
-        {
-            resolvedOnUtc = incident.GetAttributeValue<DateTime?>("new_ticketclosuredate");
-        }
-        else if (incident.Contains("modifiedon"))
-        {
-            resolvedOnUtc = incident.GetAttributeValue<DateTime?>("modifiedon");
-        }
-
-        if (!createdOnUtc.HasValue || !resolvedOnUtc.HasValue)
+        if (!createdOn.HasValue || !resolvedOn.HasValue)
             return null;
 
-        TimeSpan duration = resolvedOnUtc.Value - createdOnUtc.Value;
+        // Calculate duration
+        TimeSpan duration = resolvedOn.Value - createdOn.Value;
 
-        // ✅ Format as HH:MM:SS (cumulative hours)
+        // Format as HH:mm:ss (cumulative hours)
         return string.Format("{0:D2}:{1:D2}:{2:D2}",
             (int)duration.TotalHours,
             duration.Minutes,
