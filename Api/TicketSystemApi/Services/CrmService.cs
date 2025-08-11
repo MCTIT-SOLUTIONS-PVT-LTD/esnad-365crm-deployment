@@ -92,6 +92,33 @@ namespace TicketSystemApi.Services
                 throw new Exception($"CRM user authentication failed: {ex.Message}");
             }
         }
+        public IOrganizationService GetImpersonatedService(Guid callerId)
+        {
+            string crmServiceUrl = ConfigurationManager.AppSettings["CrmServiceUrl"];
+            if (string.IsNullOrWhiteSpace(crmServiceUrl))
+                throw new Exception("Missing CrmServiceUrl");
+
+            // Allow environment variables to override (optional)
+            var username = ConfigurationManager.AppSettings["CrmUsername"];
+            if (string.IsNullOrWhiteSpace(username))
+                username = Environment.GetEnvironmentVariable("CrmUsername", EnvironmentVariableTarget.Process);
+
+            var password = ConfigurationManager.AppSettings["CrmPassword"];
+            if (string.IsNullOrWhiteSpace(password))
+                password = Environment.GetEnvironmentVariable("CrmPassword", EnvironmentVariableTarget.Process);
+
+            if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
+                throw new Exception("Missing CrmUsername/CrmPassword (empty/whitespace or not found).");
+
+            var credentials = new ClientCredentials();
+            credentials.UserName.UserName = username;
+            credentials.UserName.Password = password;
+
+            var proxy = new OrganizationServiceProxy(new Uri(crmServiceUrl), null, credentials, null);
+            proxy.EnableProxyTypes();
+            proxy.CallerId = callerId; // impersonate the authenticated CRM user
+            return (IOrganizationService)proxy;
+        }
 
     }
 }
