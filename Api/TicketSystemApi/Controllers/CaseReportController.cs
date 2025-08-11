@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Claims;
 using System.Web.Http;
 using Microsoft.Xrm.Sdk;
 using Microsoft.Xrm.Sdk.Query;
@@ -12,22 +13,27 @@ namespace TicketSystemApi.Controllers
     [RoutePrefix("api/cases")]
     public class CaseReportController : ApiController
     {
+        private const string CLAIM_USERNAME = "crm_username";
+        private const string CLAIM_PASSWORD = "crm_password";
+
         [HttpGet]
         [Route("report")]
         public IHttpActionResult GetCases(string filter = "all", int page = 1, int? pageSize = null)
         {
             try
             {
-                var identity = (System.Security.Claims.ClaimsIdentity)User.Identity;
-                var username = identity.FindFirst("crm_username")?.Value;
-                var password = identity.FindFirst("crm_password")?.Value;
+                var identity = (ClaimsIdentity)User.Identity;
 
-                if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
+                var username = identity.FindFirst(CLAIM_USERNAME)?.Value;
+                var password = identity.FindFirst(CLAIM_PASSWORD)?.Value;
+                if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
                     return Unauthorized();
 
-                // Use dynamic user credentials (OAuth-based) for the report API
-                var service = new CrmService().GetService1(username, password); // Pass dynamic credentials to GetService
-                // Pagination & Filter Logic
+                // ✅ Connect AS THE USER who got the token (enforces CRM RBA automatically)
+                var service = new CrmService().GetService1(username, password);
+
+                // ---- your existing logic from here down (unchanged) ----
+
                 var ksaTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Arab Standard Time");
                 var ksaNow = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, ksaTimeZone);
                 DateTime? filterStart = null;
@@ -42,7 +48,7 @@ namespace TicketSystemApi.Controllers
                 string dateFilter = filterStart.HasValue
                     ? $"<condition attribute='createdon' operator='on-or-after' value='{filterStart.Value:yyyy-MM-dd}' />"
                     : "";
-                // Build FetchXML to retrieve formatted values and names
+
                 string fetchXml = $@"
                   <fetch mapping='logical' version='1.0' page='{page}' count='{pageSize ?? 50}'>
                     <entity name='incident'>
@@ -64,17 +70,12 @@ namespace TicketSystemApi.Controllers
                       <attribute name='new_subclassificationitem'/>
                       <attribute name='new_isreopened'/>
                       <attribute name='new_reopendatetime'/>
-
-                      <!-- NEW: succeeded-on timestamps stored on incident -->
                       <attribute name='new_assignmentsucceededon'/>
                       <attribute name='new_processingsucceededon'/>
                       <attribute name='new_solutionverificationsucceededon'/>
-
-                      <!-- NEW: level-wise SLA violation flags on incident -->
                       <attribute name='new_slaviolationl1'/>
                       <attribute name='new_slaviolationl2'/>
                       <attribute name='new_slaviolationl3'/>
-
                       <order attribute='createdon' descending='true'/>
                       <filter type='and'>
                         {dateFilter}
@@ -82,23 +83,19 @@ namespace TicketSystemApi.Controllers
                     </entity>
                   </fetch>";
 
-                // Retrieve cases respecting user security roles
                 var result = service.RetrieveMultiple(new FetchExpression(fetchXml));
 
                 var records = result.Entities.Select(e =>
                 {
+                    // your existing projection/mapping code (unchanged) ...
                     var currentStage = MapStatusCodeToStage(e);
                     var s = StageIndex(currentStage);
 
-                    // Gates
                     bool allowAssignment = s >= StageIndex("Ticket Creation");
                     bool allowProcessing = s >= StageIndex("Processing- Department");
                     bool allowSolutionV = s >= StageIndex("Processing");
 
-                    // KPI statuses
                     string assignmentStatus = null, processingStatus = null, solutionVStatus = null;
-
-                    // KPI times (strings; avoids tuple-name issues)
                     string assignmentWarningTime = null, assignmentFailureTime = null;
                     string processingWarningTime = null, processingFailureTime = null;
                     string solutionWarningTime = null, solutionFailureTime = null;
@@ -132,7 +129,7 @@ namespace TicketSystemApi.Controllers
                         TicketID = e.GetAttributeValue<string>("ticketnumber"),
                         CreatedBy = e.FormattedValues.Contains("createdby") ? e.FormattedValues["createdby"] : null,
                         AgentName = e.FormattedValues.Contains("ownerid") ? e.FormattedValues["ownerid"] : null,
-                        CustomerID = e.GetAttributeValue<EntityReference>("customerid")?.Id,
+                        CustomerID = e.GetAttributeValue<Microsoft.Xrm.Sdk.EntityReference>("customerid")?.Id,
                         CustomerName = e.FormattedValues.Contains("customerid") ? e.FormattedValues["customerid"] : null,
                         CreatedOn = ToKsaString(e.GetAttributeValue<DateTime?>("createdon")),
                         TicketType = e.FormattedValues.Contains("new_tickettype") ? e.FormattedValues["new_tickettype"] : null,
@@ -150,33 +147,25 @@ namespace TicketSystemApi.Controllers
                         Priority = e.FormattedValues.Contains("prioritycode") ? e.FormattedValues["prioritycode"] : null,
                         ResolutionDateTime = ToKsaString(GetResolutionDateTime(e)),
 
-                        // CSAT: score = number, comment = text
                         Customer_Satisfaction_Score = csat.Score,
                         How_Satisfied_Are_You_With_How_The_Ticket_Was_Handled = csat.Comment,
                         Was_the_Time_Taken_to_process_the_ticket_Appropriate = csat.AppropriateTimeTaken,
                         How_can_we_Improve_the_ticket_processing_experience = csat.ImprovementComment,
 
                         IsReopened = string.IsNullOrWhiteSpace(e.GetAttributeValue<string>("new_isreopened")) ? "No" : e.GetAttributeValue<string>("new_isreopened"),
-
-                        // NEW: aggregated Yes/No from incident L1/L2/L3 flags, 
                         SlaViolation = AggregateSlaViolation(e),
 
-                        // KPI statuses (stage-gated)
                         AssignmentTimeByKPI = assignmentStatus,
                         ProcessingTimeByKPI = processingStatus,
                         SolutionVerificationTimeByKPI = solutionVStatus,
 
                         CurrentStage = currentStage,
-
-                        // Escalation level derived from statuses (optional; returns null if pattern not matched)
                         EscalationLevel = GetEscalationLevelFromStatuses(assignmentStatus, processingStatus, solutionVStatus),
 
                         ReopenedOn = ToKsaString(e.GetAttributeValue<DateTime?>("new_reopendatetime")),
 
-                        // KPI times (stage-gated)
                         AssignmentWarningTime = assignmentWarningTime,
                         AssignmentFailureTime = assignmentFailureTime,
-                        // SucceededOn now stored on incident
                         AssignmentSucceededOn = ToKsaString(e.GetAttributeValue<DateTime?>("new_assignmentsucceededon")),
 
                         ProcessingWarningTime = processingWarningTime,
@@ -187,7 +176,6 @@ namespace TicketSystemApi.Controllers
                         SolutionVerificationFailureTime = solutionFailureTime,
                         SolutionVerificationSucceededOn = ToKsaString(e.GetAttributeValue<DateTime?>("new_solutionverificationsucceededon")),
 
-                        // Level-wise SLA violation flags now on Incident
                         SlaViolationL1 = YesNoFromBool(e, "new_slaviolationl1"),
                         SlaViolationL2 = YesNoFromBool(e, "new_slaviolationl2"),
                         SlaViolationL3 = YesNoFromBool(e, "new_slaviolationl3"),

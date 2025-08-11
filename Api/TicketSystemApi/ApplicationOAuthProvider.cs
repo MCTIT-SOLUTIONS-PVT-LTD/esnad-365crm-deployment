@@ -3,63 +3,73 @@ using System.Security.Claims;
 using System.Threading.Tasks;
 using Microsoft.Owin.Security;
 using Microsoft.Owin.Security.OAuth;
+using Microsoft.Crm.Sdk.Messages;   // WhoAmI
+using TicketSystemApi.Services;     // CrmService
 
 public class ApplicationOAuthProvider : OAuthAuthorizationServerProvider
 {
+    // Avoid ClaimTypes enum issues entirely
+    private const string CLAIM_NAME = "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name";
+
     public override async Task ValidateClientAuthentication(OAuthValidateClientAuthenticationContext context)
     {
-        context.Validated(); // no client app secrets — OK for first-party scenarios
+        context.Validated();
     }
 
     public override async Task GrantResourceOwnerCredentials(OAuthGrantResourceOwnerCredentialsContext context)
     {
-        // validate the user (your existing logic) …
+        try
+        {
+            var username = context.UserName;
+            var password = context.Password;
 
-        var identity = new ClaimsIdentity(OAuthDefaults.AuthenticationType);
+            // ✅ Validate username/password against CRM
+            var org = new CrmService().GetService1(username, password);
+            var who = (WhoAmIResponse)org.Execute(new WhoAmIRequest());
+            if (who == null || who.UserId == Guid.Empty)
+            {
+                context.SetError("invalid_grant", "Invalid username or password.");
+                return;
+            }
 
-        // REQUIRED for your controller:
-        identity.AddClaim(new Claim("crm_username", context.UserName));
-        identity.AddClaim(new Claim("crm_password", context.Password));
+            // Build identity (token is encrypted/protected by OWIN)
+            var identity = new ClaimsIdentity(context.Options.AuthenticationType);
+            identity.AddClaim(new Claim(CLAIM_NAME, username));
 
-        // optional:
-        identity.AddClaim(new Claim(ClaimTypes.Name, context.UserName));
+            // 🔐 Store creds so controller can connect AS THE USER (no service account)
+            identity.AddClaim(new Claim("crm_username", username));
+            identity.AddClaim(new Claim("crm_password", password));
 
+            var props = new AuthenticationProperties
+            {
+                IssuedUtc = DateTimeOffset.UtcNow,
+                ExpiresUtc = DateTimeOffset.UtcNow.AddHours(8)
+            };
+
+            context.Validated(new AuthenticationTicket(identity, props));
+        }
+        catch
+        {
+            context.SetError("invalid_grant", "Invalid username or password.");
+        }
+    }
+
+    public override Task GrantRefreshToken(OAuthGrantRefreshTokenContext context)
+    {
+        var newIdentity = new ClaimsIdentity(context.Ticket.Identity); // keep claims incl. creds
         var props = new AuthenticationProperties
         {
             IssuedUtc = DateTimeOffset.UtcNow,
             ExpiresUtc = DateTimeOffset.UtcNow.AddHours(8)
         };
-
-        var ticket = new AuthenticationTicket(identity, props);
-        context.Validated(ticket);
-    }
-
-    // Issue a new access token when client sends grant_type=refresh_token
-    public override Task GrantRefreshToken(OAuthGrantRefreshTokenContext context)
-    {
-        var newIdentity = new ClaimsIdentity(context.Ticket.Identity);
-        // optionally mutate claims here
-
-        var props = new AuthenticationProperties
-        {
-            IssuedUtc = DateTimeOffset.UtcNow,
-            ExpiresUtc = DateTimeOffset.UtcNow.AddHours(8) // 8h new access token
-        };
-
-        var newTicket = new AuthenticationTicket(newIdentity, props);
-        context.Validated(newTicket);
+        context.Validated(new AuthenticationTicket(newIdentity, props));
         return Task.FromResult(0);
     }
 
-    // Add extra fields to the token response
     public override Task TokenEndpoint(OAuthTokenEndpointContext context)
     {
         var eightHours = (int)TimeSpan.FromHours(8).TotalSeconds;
-
-        // ✅ Only add refresh_expires_in
         context.AdditionalResponseParameters["refresh_expires_in"] = eightHours;
-
-        // ❌ Don't add expires_in here — OWIN already adds it
         return Task.FromResult(0);
     }
 }
