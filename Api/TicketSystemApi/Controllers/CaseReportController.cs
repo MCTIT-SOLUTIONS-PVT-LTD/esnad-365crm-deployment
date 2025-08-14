@@ -110,10 +110,15 @@ namespace TicketSystemApi.Controllers
                         TicketModifiedDateTime = ConvertToKsaTime(e.GetAttributeValue<DateTime?>("modifiedon"))?.ToString("yyyy-MM-dd HH:mm:ss"),
                         Department = e.Attributes.Contains("new_businessunitid") ? ((EntityReference)e["new_businessunitid"]).Name : null,
                         TicketChannel = e.FormattedValues.Contains("new_ticketsubmissionchannel") ? e.FormattedValues["new_ticketsubmissionchannel"] : null,
-                        TotalResolutionTime = CalculateDurationFormatted(e),
+
+                        //TotalResolutionTime = CalculateDurationFormatted(e),
+                        TotalTicketDuration = CalculateDurationFormatted(e),
+
                         Description = e.GetAttributeValue<string>("new_description"),
                         ModifiedBy = e.GetAttributeValue<EntityReference>("modifiedby")?.Name,
                         Priority = e.FormattedValues.Contains("prioritycode") ? e.FormattedValues["prioritycode"] : null,
+                        // (same as ResolutionDateTime)ClosedOn = ConvertToKsaTime(e.GetAttributeValue<DateTime?>("new_ticketclosuredate")),
+
                         ResolutionDateTime = GetResolutionDateTime(e)?.ToString("yyyy-MM-dd HH:mm:ss"),
 
                         // CSAT Fields
