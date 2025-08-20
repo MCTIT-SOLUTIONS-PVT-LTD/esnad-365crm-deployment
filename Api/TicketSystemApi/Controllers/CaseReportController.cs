@@ -51,7 +51,7 @@ namespace TicketSystemApi.Controllers
                     }
                 };
 
-                query.Orders.Add(new OrderExpression("createdon", OrderType.Descending));
+                query.Orders.Add(new OrderExpression("modifiedon", OrderType.Descending)); // Change to sort by modifiedon
 
                 var ksaTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Arab Standard Time");
                 var ksaNow = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, ksaTimeZone);
@@ -60,17 +60,17 @@ namespace TicketSystemApi.Controllers
                 if (filter.ToLower() == "daily")
                 {
                     ksaStart = ksaNow.Date;
-                    query.Criteria.AddCondition("createdon", ConditionOperator.OnOrAfter, ksaStart);
+                    query.Criteria.AddCondition("modifiedon", ConditionOperator.OnOrAfter, ksaStart); // Filter by modifiedon
                 }
                 else if (filter.ToLower() == "weekly")
                 {
                     ksaStart = ksaNow.Date.AddDays(-7);
-                    query.Criteria.AddCondition("createdon", ConditionOperator.OnOrAfter, ksaStart);
+                    query.Criteria.AddCondition("modifiedon", ConditionOperator.OnOrAfter, ksaStart); // Filter by modifiedon
                 }
                 else if (filter.ToLower() == "monthly")
                 {
                     ksaStart = new DateTime(ksaNow.Year, ksaNow.Month, 1);
-                    query.Criteria.AddCondition("createdon", ConditionOperator.OnOrAfter, ksaStart);
+                    query.Criteria.AddCondition("modifiedon", ConditionOperator.OnOrAfter, ksaStart); // Filter by modifiedon
                 }
 
                 var result = service.RetrieveMultiple(query);
@@ -107,7 +107,7 @@ namespace TicketSystemApi.Controllers
                         SubCategory1 = e.GetAttributeValue<EntityReference>("new_mainclassification")?.Name,
                         SubCategory2 = e.GetAttributeValue<EntityReference>("new_subclassificationitem")?.Name,
                         Status = e.FormattedValues.Contains("statuscode") ? e.FormattedValues["statuscode"] : null,
-                        TicketModifiedDateTime = ConvertToKsaTime(e.GetAttributeValue<DateTime?>("modifiedon"))?.ToString("yyyy-MM-dd HH:mm:ss"),
+                        TicketModifiedDateTime = ConvertToKsaTime(e.GetAttributeValue<DateTime?>("modifiedon"))?.ToString("yyyy-MM-dd HH:mm:ss"), // Adjust to show modified date
                         Department = e.Attributes.Contains("new_businessunitid") ? ((EntityReference)e["new_businessunitid"]).Name : null,
                         TicketChannel = e.FormattedValues.Contains("new_ticketsubmissionchannel") ? e.FormattedValues["new_ticketsubmissionchannel"] : null,
 
