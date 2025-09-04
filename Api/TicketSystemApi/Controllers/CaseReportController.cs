@@ -476,8 +476,5 @@ namespace TicketSystemApi.Controllers
         //    var v = ConvertToKsaTime(utc);
         //    return v.HasValue ? v.Value.ToString("yyyy-MM-dd HH:mm:ss") : null;
         //}
-
-
-
     }
 }
