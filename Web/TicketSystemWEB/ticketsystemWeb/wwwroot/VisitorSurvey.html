@@ -1,0 +1,485 @@
+﻿<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <title>Your Feedback</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        body {
+            background-color: #e8e6db;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Segoe UI', sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .feedback-card {
+            background: #fff;
+            border-radius: 24px;
+            padding: 24px;
+            width: 100%;
+            max-width: 540px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+        }
+
+        .ticket-number {
+            font-size: 14px;
+            color: #555;
+            background: #f0f0f0;
+            border-radius: 12px;
+            display: inline-block;
+            padding: 6px 14px;
+            margin-top: 8px;
+            word-break: break-word;
+        }
+
+        .star-rating {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            font-size: 32px;
+            margin: 15px 0;
+            cursor: pointer;
+            flex-wrap: wrap;
+        }
+
+        .star {
+            color: #ccc;
+            transition: color 0.2s;
+        }
+
+            .star.selected {
+                color: #ffc107;
+            }
+
+        textarea {
+            border-radius: 12px;
+            resize: none;
+            font-size: 14px;
+            padding: 15px;
+            width: 100%;
+        }
+
+        .footer-section {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 20px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+            .user-info img {
+                width: 32px;
+                height: 32px;
+                border-radius: 50%;
+            }
+
+        .user-name {
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .btn-submit {
+            background-color: #12988b;
+            border: none;
+            padding: 10px 24px;
+            border-radius: 30px;
+            color: white;
+            font-weight: 500;
+            transition: background 0.3s;
+        }
+
+            .btn-submit:hover {
+                background-color: #00796b;
+            }
+
+        #thankYouSection, #errorSection {
+            display: none;
+            background-color: #fff8e6;
+            max-width: 540px;
+            margin: auto;
+            padding: 30px 24px;
+            border-radius: 24px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            animation: fadeInUp 0.6s ease-out;
+            text-align: center;
+        }
+
+        #thankYouSection {
+            animation: pulse 2s infinite;
+            box-shadow: 0 0 40px rgba(255, 223, 0, 0.3);
+        }
+
+            #thankYouSection .emoji {
+                font-size: 2.5rem;
+                margin-bottom: 10px;
+                animation: bounce 0.8s infinite alternate;
+            }
+
+        #errorSection h4 {
+            color: #e53935;
+        }
+
+        #loaderOverlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(255, 255, 255, 0.85);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+        }
+        /* Arabic mode: put checkbox after the text */
+        body[dir="rtl"] .form-check {
+            direction: rtl !important;
+            text-align: right !important;
+            display: flex;
+            flex-direction: row; /* keep natural order */
+            justify-content: flex-end; /* push content to the right */
+        }
+
+        /* Arabic mode: show label text first, checkbox after */
+        body[dir="rtl"] .form-check {
+            display: flex;
+            flex-direction: row-reverse; /* reverse order of children */
+            justify-content: flex-end;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* Ensure label stays before the box */
+        body[dir="rtl"] .form-check-label {
+            order: 1;
+        }
+
+        body[dir="rtl"] .form-check-input {
+            order: 2; /* put checkbox after label */
+            margin: 0;
+        }
+
+
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes bounce {
+            from {
+                transform: translateY(0);
+            }
+
+            to {
+                transform: translateY(-8px);
+            }
+        }
+
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 rgba(255,223,0,0.5);
+            }
+
+            50% {
+                box-shadow: 0 0 30px rgba(255,223,0,1);
+            }
+
+            100% {
+                box-shadow: 0 0 0 rgba(255,223,0,0.5);
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="formSection" class="feedback-card">
+        <div class="position-absolute" style="top: 20px; right: 30px;">
+            <select id="languageSwitcher" class="form-select form-select-sm" style="border-radius: 20px;">
+                <option value="ar" selected>🇸🇦 العربية</option>
+                <option value="en">🇺🇸 English</option>
+            </select>
+        </div>
+
+        <div class="text-center mb-3">
+            <h4 class="mb-2">Your Feedback</h4>
+            <div class="ticket-number" id="ticketNumber">Loading ticket...</div>
+        </div>
+
+        <!-- Q1 -->
+        <label id="q1Label" class="form-label mb-0">...</label>
+        <div class="star-rating" id="q1Stars">
+            <span class="star" data-value="1" data-question="q1">★</span>
+            <span class="star" data-value="2" data-question="q1">★</span>
+            <span class="star" data-value="3" data-question="q1">★</span>
+            <span class="star" data-value="4" data-question="q1">★</span>
+            <span class="star" data-value="5" data-question="q1">★</span>
+        </div>
+
+        <!-- Q2 -->
+        <label id="q2Label" class="form-label mb-0">...</label>
+        <div class="star-rating" id="q2Stars">
+            <span class="star" data-value="1" data-question="q2">★</span>
+            <span class="star" data-value="2" data-question="q2">★</span>
+            <span class="star" data-value="3" data-question="q2">★</span>
+            <span class="star" data-value="4" data-question="q2">★</span>
+            <span class="star" data-value="5" data-question="q2">★</span>
+        </div>
+
+        <!-- Q3 -->
+        <div class="mb-3">
+            <label id="q3Label" class="form-label">...</label>
+            <div class="form-check text-start">
+                <input class="form-check-input" type="checkbox" id="reason1">
+                <label class="form-check-label" for="reason1"></label>
+            </div>
+            <div class="form-check text-start">
+                <input class="form-check-input" type="checkbox" id="reason2">
+                <label class="form-check-label" for="reason2"></label>
+            </div>
+            <div class="form-check text-start">
+                <input class="form-check-input" type="checkbox" id="reason3">
+                <label class="form-check-label" for="reason3"></label>
+            </div>
+            <div class="form-check text-start">
+                <input class="form-check-input" type="checkbox" id="reasonOther">
+                <label class="form-check-label" for="reasonOther"></label>
+            </div>
+            <!-- Put textarea outside so it drops to a new line -->
+            <textarea class="form-control mt-2" id="reasonOtherText"
+                      placeholder="Please specify..."
+                      style="display:none;" rows="3"></textarea>
+
+        </div>
+
+        <!-- Q4 -->
+        <div class="mb-3">
+            <label id="q4Label" class="form-label">...</label>
+            <textarea class="form-control" id="comment" rows="4"></textarea>
+        </div>
+
+        <div class="footer-section">
+            <div class="user-info">
+                <img src="https://cdn-icons-png.flaticon.com/512/921/921347.png" alt="User Avatar">
+                <div class="user-name" id="userName">Loading user...</div>
+            </div>
+            <button class="btn btn-submit" onclick="submitFeedback()">Submit</button>
+        </div>
+    </div>
+
+    <div id="thankYouSection">
+        <div class="emoji">🎉</div>
+        <h4>Thank You!</h4>
+        <p>Your feedback has been submitted successfully.</p>
+    </div>
+
+    <div id="errorSection">
+        <div class="emoji">❌</div>
+        <h4>Feedback Already Submitted</h4>
+        <p>You have already provided feedback for this ticket. Thank you!</p>
+    </div>
+
+    <div id="loaderOverlay">
+        <div class="spinner-border text-success" style="width: 3rem; height: 3rem;" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+
+    <script>
+        const domain = window.ENV?.DOMAIN || "__DOMAIN__";
+        const token = window.ENV?.TOKEN || "__API_TOKEN__";
+
+        //const domain = "feedback-dev.crm-esnad.com";
+        //const token = "8fo6crPvK6y2sBp7Ukga90gK9K0GfTUuQex6FmZVp6XcyuUiF2jBfbP2pObBGfdk";
+
+        let q1Rating = 0, q2Rating = 0, ticketId = null;
+        let currentLang = "ar";
+
+        // CRM OptionSet numeric values for Reasons
+        const reasonValues = {
+            reason1: 1, // Ineffectiveness of digital channels
+            reason2: 2, // Insufficient info in Help Center
+            reason3: 3, // Insufficient info on Ta’adeen
+            reasonOther: 4 // Other
+        };
+
+        const translations = {
+            en: {
+                title: "Visitor Feedback",
+                q1: "How satisfied are you with the service provided at the center?",
+                q2: "How satisfied are you with the efficiency of the staff who assisted you?",
+                q3: "Help us better understand why you chose to visit the service center instead of using other communication channels:",
+                reasons: [
+                    "Ineffectiveness of digital channels",
+                    "Insufficient information available in the Help Center",
+                    "Insufficient information available on the Ta’adeen platform",
+                    "Other"
+                ],
+                q4: "Your opinion matters to us — please share your comments and suggestions:",
+                otherPlaceholder: "Please specify...",
+                submit: "Submit"
+            },
+            ar: {
+                title: "ملاحظاتك",
+                q1: "ما مدى رضاك عن الخدمة المقدمة عبر المركز؟ ",
+                q2: "ما مدى رضاك عن كفاءة الموظف الذي قام بخدمتك ؟",
+                q3: "ساعدنا أكثر بمعرفة سبب اختيارك زيارة مركز الخدمة بدلاً من قنوات التواصل الاخرى ؟ ",
+                reasons: [
+                    "عدم فاعلية القنوات الرقمية",
+                    "عدم وجود معلومات كافية في مركز المساعدة",
+                    "عدم وجود معلومات كافية في منصة تعدين",
+                    "خيار آخر"
+                ],
+                q4: "رأيك يهمنا شاركنا ملاحظاتك ومقترحاتك:",
+                otherPlaceholder: "الرجاء التحديد...",
+                submit: "إرسال"
+            }
+        };
+
+        function setLanguage(lang) {
+            currentLang = lang;
+            const t = translations[lang] || translations.en;
+            document.querySelector("#formSection h4").innerText = t.title;
+            document.getElementById("q1Label").innerText = t.q1;
+            document.getElementById("q2Label").innerText = t.q2;
+            document.getElementById("q3Label").innerText = t.q3;
+            document.getElementById("q4Label").innerText = t.q4;
+            document.querySelector("label[for='reason1']").innerText = t.reasons[0];
+            document.querySelector("label[for='reason2']").innerText = t.reasons[1];
+            document.querySelector("label[for='reason3']").innerText = t.reasons[2];
+            document.querySelector("label[for='reasonOther']").innerText = t.reasons[3];
+
+            document.getElementById("reasonOtherText").placeholder = t.otherPlaceholder;
+            document.querySelector(".btn-submit").innerText = t.submit;
+
+            document.body.dir = lang === "ar" ? "rtl" : "ltr";
+            document.querySelector(".feedback-card").style.textAlign = lang === "ar" ? "right" : "left";
+        }
+
+        document.getElementById("languageSwitcher").addEventListener("change", e => setLanguage(e.target.value));
+        setLanguage("ar");
+
+        // Star ratings
+        document.querySelectorAll('.star').forEach(star => {
+            star.addEventListener('click', () => {
+                const q = star.getAttribute('data-question');
+                const v = parseInt(star.getAttribute('data-value'));
+                if (q === "q1") q1Rating = v;
+                if (q === "q2") q2Rating = v;
+                document.querySelectorAll(`.star[data-question="${q}"]`)
+                    .forEach(s => s.classList.toggle('selected', parseInt(s.getAttribute('data-value')) <= v));
+            });
+        });
+
+        // Show/hide textarea for "Other"
+        document.getElementById("reasonOther").addEventListener("change", function () {
+            const otherText = document.getElementById("reasonOtherText");
+            otherText.style.display = this.checked ? "block" : "none";
+            if (!this.checked) otherText.value = "";
+        });
+
+        // Collect selected reason option values
+        function getReasons() {
+            const reasons = [];
+            if (document.getElementById("reason1").checked) reasons.push(reasonValues.reason1);
+            if (document.getElementById("reason2").checked) reasons.push(reasonValues.reason2);
+            if (document.getElementById("reason3").checked) reasons.push(reasonValues.reason3);
+            if (document.getElementById("reasonOther").checked) reasons.push(reasonValues.reasonOther);
+            return reasons;
+        }
+
+        // Capture "Other" free text
+        function getSpecifyOther() {
+            if (document.getElementById("reasonOther").checked) {
+                return document.getElementById("reasonOtherText").value.trim();
+            }
+            return "";
+        }
+
+        function showLoader() { document.getElementById("loaderOverlay").style.display = "flex"; }
+        function hideLoader() { document.getElementById("loaderOverlay").style.display = "none"; }
+
+        function submitFeedback() {
+            let opinion = document.getElementById('comment').value.trim();
+            if (!q1Rating || !q2Rating) return alert("Please answer both rating questions.");
+            if (!ticketId) return alert("Cannot submit feedback. Ticket ID is missing.");
+            if (!opinion) opinion = "No comments added by customer";
+
+            const payload = {
+                TicketId: ticketId,
+                ServiceSatisfaction: q1Rating,
+                StaffEfficiency: q2Rating,
+                Reasons: getReasons(),
+                SpecifyOther: getSpecifyOther(),
+                Opinion: opinion
+            };
+
+            console.log("Submitting payload:", payload);
+
+            showLoader();
+            fetch(`${domain}/customers/visitor-feedback`, {
+                method: "POST",
+                headers: {
+                    "Authorization": `Bearer ${token}`,
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(payload)
+            })
+                .then(res => res.json())
+                .then(r => {
+                    hideLoader();
+                    if (r.Status?.toLowerCase() === "success") {
+                        document.getElementById("formSection").style.display = "none";
+                        document.getElementById("thankYouSection").style.display = "block";
+                    } else if (r.Message?.toLowerCase().includes("already submitted")) {
+                        document.getElementById("formSection").style.display = "none";
+                        document.getElementById("errorSection").style.display = "block";
+                    } else {
+                        alert("❌ Error: " + (r.Message || "Unknown error"));
+                    }
+                })
+                .catch(err => { hideLoader(); alert("❌ Could not submit feedback."); console.error(err); });
+        }
+
+        // Load ticket info
+        const urlParams = new URLSearchParams(window.location.search);
+        const ticketNumber = urlParams.get("ticketNumber");
+        showLoader();
+        fetch(`${domain}/customers/by-ticket/${ticketNumber}`, { headers: { "Authorization": `Bearer ${token}` } })
+            .then(res => res.json())
+            .then(r => {
+                hideLoader();
+                if (r.Status?.toLowerCase() === "success") {
+                    const user = r.Data;
+                    ticketId = user.CaseId; // ✅ TicketId expected by API
+                    document.getElementById("ticketNumber").innerText = `Ticket: ${user.TicketNumber}`;
+                    document.getElementById("userName").innerText = user.DisplayName;
+                } else {
+                    document.getElementById("ticketNumber").innerText = "Ticket Number: (Not Found)";
+                    document.getElementById("userName").innerText = "(Unknown)";
+                }
+            })
+            .catch(err => { hideLoader(); console.error("Load error:", err); });
+    </script>
+</body>
+</html>
