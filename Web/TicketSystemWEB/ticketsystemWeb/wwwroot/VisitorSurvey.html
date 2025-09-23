@@ -312,6 +312,14 @@
         let q1Rating = 0, q2Rating = 0, ticketId = null;
         let currentLang = "ar";
 
+        // CRM OptionSet numeric values for Reasons
+        const reasonValues = {
+            reason1: 1,
+            reason2: 2,
+            reason3: 3,
+            reasonOther: 4
+        };
+
         const translations = {
             en: {
                 title: "Your Feedback",
@@ -362,6 +370,7 @@
             document.getElementById("q2Label").innerText = t.q2;
             document.getElementById("q3Label").innerText = t.q3;
             document.getElementById("q4Label").innerText = t.q4;
+
             document.querySelector("label[for='reason1']").innerText = t.reasons[0];
             document.querySelector("label[for='reason2']").innerText = t.reasons[1];
             document.querySelector("label[for='reason3']").innerText = t.reasons[2];
@@ -382,6 +391,41 @@
 
         document.getElementById("languageSwitcher").addEventListener("change", e => setLanguage(e.target.value));
         setLanguage("ar");
+
+        // ⭐ Star ratings
+        document.querySelectorAll('.star').forEach(star => {
+            star.addEventListener('click', () => {
+                const q = star.getAttribute('data-question');
+                const v = parseInt(star.getAttribute('data-value'));
+                if (q === "q1") q1Rating = v;
+                if (q === "q2") q2Rating = v;
+                document.querySelectorAll(`.star[data-question="${q}"]`)
+                    .forEach(s => s.classList.toggle('selected', parseInt(s.getAttribute('data-value')) <= v));
+            });
+        });
+
+        // Show/hide textarea for "Other"
+        document.getElementById("reasonOther").addEventListener("change", function () {
+            const otherText = document.getElementById("reasonOtherText");
+            otherText.style.display = this.checked ? "block" : "none";
+            if (!this.checked) otherText.value = "";
+        });
+
+        function getReasons() {
+            const reasons = [];
+            if (document.getElementById("reason1").checked) reasons.push(reasonValues.reason1);
+            if (document.getElementById("reason2").checked) reasons.push(reasonValues.reason2);
+            if (document.getElementById("reason3").checked) reasons.push(reasonValues.reason3);
+            if (document.getElementById("reasonOther").checked) reasons.push(reasonValues.reasonOther);
+            return reasons;
+        }
+
+        function getSpecifyOther() {
+            if (document.getElementById("reasonOther").checked) {
+                return document.getElementById("reasonOtherText").value.trim();
+            }
+            return "";
+        }
 
         function showLoader() { document.getElementById("loaderOverlay").style.display = "flex"; }
         function hideLoader() { document.getElementById("loaderOverlay").style.display = "none"; }
@@ -426,7 +470,7 @@
                 .catch(err => { hideLoader(); alert("❌ Could not submit feedback."); console.error(err); });
         }
 
-        // Load ticket info & auto-detect feedback already exists
+        // 🔹 Load ticket info
         const urlParams = new URLSearchParams(window.location.search);
         const ticketNumber = urlParams.get("ticketNumber");
 
@@ -441,7 +485,7 @@
                     document.getElementById("ticketNumber").innerText = `Ticket: ${user.TicketNumber}`;
                     document.getElementById("userName").innerText = user.DisplayName;
 
-                    // 🔹 Immediately show "Already Submitted" if API response indicates
+                    // If backend flags already submitted → show immediately
                     if (r.Message?.toLowerCase().includes("already submitted")) {
                         document.getElementById("formSection").style.display = "none";
                         document.getElementById("errorSection").style.display = "block";
