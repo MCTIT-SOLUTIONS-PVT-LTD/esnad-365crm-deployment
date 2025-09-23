@@ -306,105 +306,57 @@
     </div>
 
     <script>
-        // Injected at build time. Can be:
-        //   "api.crm-esnad.com" OR "https://api.crm-esnad.com"
-        const DOMAIN_RAW = (window.ENV && window.ENV.DOMAIN) || "__DOMAIN__";
-        const TOKEN = (window.ENV && window.ENV.TOKEN) || "__API_TOKEN__";
+        const domain = window.ENV?.DOMAIN || "__DOMAIN__";
+        const token = window.ENV?.TOKEN || "__API_TOKEN__";
 
-        // --- Helpers -------------------------------------------------------------
-        function normalizeBase(domain) {
-            let d = (domain || "").trim();
-            if (!/^https?:\/\//i.test(d)) d = "https://" + d;  // ensure scheme
-            return d.replace(/\/+$/, "");                       // strip trailing slash
-        }
-        const BASE = normalizeBase(DOMAIN_RAW);
-
-        function apiUrl(path) {
-            return BASE + path; // path must start with "/"
-        }
-
-        function showLoader() { document.getElementById("loaderOverlay").style.display = "flex"; }
-        function hideLoader() { document.getElementById("loaderOverlay").style.display = "none"; }
-
-        async function parseJsonSafe(res) {
-            const text = await res.text();
-            let json;
-            try { json = JSON.parse(text); }
-            catch { json = { Status: "error", Message: text || "Empty response" }; }
-            return { json, raw: text };
-        }
-
-        async function apiGet(path) {
-            const res = await fetch(apiUrl(path), {
-                method: "GET",
-                headers: { "Authorization": `Bearer ${TOKEN}` },
-                mode: "cors",
-                credentials: "omit"
-            });
-            const { json, raw } = await parseJsonSafe(res);
-            console.log("GET", apiUrl(path), "->", res.status, raw);
-            return { status: res.status, body: json };
-        }
-
-        async function apiPost(path, payload) {
-            const res = await fetch(apiUrl(path), {
-                method: "POST",
-                headers: {
-                    "Authorization": `Bearer ${TOKEN}`,
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify(payload),
-                mode: "cors",
-                credentials: "omit"
-            });
-            const { json, raw } = await parseJsonSafe(res);
-            console.log("POST", apiUrl(path), "payload:", payload, "->", res.status, raw);
-            return { status: res.status, body: json };
-        }
-
-        // --- UI wiring -----------------------------------------------------------
         let q1Rating = 0, q2Rating = 0, ticketId = null;
         let currentLang = "ar";
 
-        // CRM OptionSet numeric values (Reasons)
-        const reasonValues = { reason1: 1, reason2: 2, reason3: 3, reasonOther: 4 };
-
         const translations = {
             en: {
-                title: "Visitor Feedback",
+                title: "Your Feedback",
                 q1: "How satisfied are you with the service provided at the center?",
                 q2: "How satisfied are you with the efficiency of the staff who assisted you?",
                 q3: "Help us better understand why you chose to visit the service center instead of using other communication channels:",
+                q4: "Your opinion matters to us — please share your comments and suggestions:",
                 reasons: [
                     "Ineffectiveness of digital channels",
                     "Insufficient information available in the Help Center",
                     "Insufficient information available on the Ta’adeen platform",
                     "Other"
                 ],
-                q4: "Your opinion matters to us — please share your comments and suggestions:",
                 otherPlaceholder: "Please specify...",
-                submit: "Submit"
+                submit: "Submit",
+                thankYouTitle: "Thank You!",
+                thankYouText: "Your feedback has been submitted successfully.",
+                alreadySubmittedTitle: "Feedback Already Submitted",
+                alreadySubmittedText: "You have already provided feedback for this ticket. Thank you!"
             },
             ar: {
                 title: "ملاحظاتك",
                 q1: "ما مدى رضاك عن الخدمة المقدمة عبر المركز؟ ",
                 q2: "ما مدى رضاك عن كفاءة الموظف الذي قام بخدمتك ؟",
                 q3: "ساعدنا أكثر بمعرفة سبب اختيارك زيارة مركز الخدمة بدلاً من قنوات التواصل الاخرى ؟ ",
+                q4: "رأيك يهمنا شاركنا ملاحظاتك ومقترحاتك:",
                 reasons: [
                     "عدم فاعلية القنوات الرقمية",
                     "عدم وجود معلومات كافية في مركز المساعدة",
                     "عدم وجود معلومات كافية في منصة تعدين",
                     "خيار آخر"
                 ],
-                q4: "رأيك يهمنا شاركنا ملاحظاتك ومقترحاتك:",
                 otherPlaceholder: "الرجاء التحديد...",
-                submit: "إرسال"
+                submit: "إرسال",
+                thankYouTitle: "شكرًا لك!",
+                thankYouText: "تم إرسال ملاحظاتك بنجاح.",
+                alreadySubmittedTitle: "تم إرسال الملاحظات مسبقًا",
+                alreadySubmittedText: "لقد قدمت ملاحظاتك بالفعل لهذه التذكرة. شكرًا لك!"
             }
         };
 
         function setLanguage(lang) {
             currentLang = lang;
             const t = translations[lang] || translations.en;
+
             document.querySelector("#formSection h4").innerText = t.title;
             document.getElementById("q1Label").innerText = t.q1;
             document.getElementById("q2Label").innerText = t.q2;
@@ -414,8 +366,16 @@
             document.querySelector("label[for='reason2']").innerText = t.reasons[1];
             document.querySelector("label[for='reason3']").innerText = t.reasons[2];
             document.querySelector("label[for='reasonOther']").innerText = t.reasons[3];
+
             document.getElementById("reasonOtherText").placeholder = t.otherPlaceholder;
             document.querySelector(".btn-submit").innerText = t.submit;
+
+            // update ThankYou & Error sections
+            document.querySelector("#thankYouSection h4").innerText = t.thankYouTitle;
+            document.querySelector("#thankYouSection p").innerText = t.thankYouText;
+            document.querySelector("#errorSection h4").innerText = t.alreadySubmittedTitle;
+            document.querySelector("#errorSection p").innerText = t.alreadySubmittedText;
+
             document.body.dir = lang === "ar" ? "rtl" : "ltr";
             document.querySelector(".feedback-card").style.textAlign = lang === "ar" ? "right" : "left";
         }
@@ -423,44 +383,13 @@
         document.getElementById("languageSwitcher").addEventListener("change", e => setLanguage(e.target.value));
         setLanguage("ar");
 
-        // Star rating handlers
-        document.querySelectorAll('.star').forEach(star => {
-            star.addEventListener('click', () => {
-                const q = star.getAttribute('data-question');
-                const v = parseInt(star.getAttribute('data-value'), 10);
-                if (q === "q1") q1Rating = v;
-                if (q === "q2") q2Rating = v;
-                document.querySelectorAll(`.star[data-question="${q}"]`)
-                    .forEach(s => s.classList.toggle('selected', parseInt(s.getAttribute('data-value'), 10) <= v));
-            });
-        });
+        function showLoader() { document.getElementById("loaderOverlay").style.display = "flex"; }
+        function hideLoader() { document.getElementById("loaderOverlay").style.display = "none"; }
 
-        // "Other" textbox toggle
-        document.getElementById("reasonOther").addEventListener("change", function () {
-            const otherText = document.getElementById("reasonOtherText");
-            otherText.style.display = this.checked ? "block" : "none";
-            if (!this.checked) otherText.value = "";
-        });
-
-        function getReasons() {
-            const reasons = [];
-            if (document.getElementById("reason1").checked) reasons.push(reasonValues.reason1);
-            if (document.getElementById("reason2").checked) reasons.push(reasonValues.reason2);
-            if (document.getElementById("reason3").checked) reasons.push(reasonValues.reason3);
-            if (document.getElementById("reasonOther").checked) reasons.push(reasonValues.reasonOther);
-            return reasons;
-        }
-        function getSpecifyOther() {
-            return document.getElementById("reasonOther").checked
-                ? document.getElementById("reasonOtherText").value.trim()
-                : "";
-        }
-
-        // Submit handler (uses async/await + finally so loader always hides)
-        async function submitFeedback() {
+        function submitFeedback() {
             let opinion = document.getElementById('comment').value.trim();
-            if (!q1Rating || !q2Rating) { alert("Please answer both rating questions."); return; }
-            if (!ticketId) { alert("Cannot submit feedback. Ticket ID is missing."); return; }
+            if (!q1Rating || !q2Rating) return alert("Please answer both rating questions.");
+            if (!ticketId) return alert("Cannot submit feedback. Ticket ID is missing.");
             if (!opinion) opinion = "No comments added by customer";
 
             const payload = {
@@ -472,69 +401,58 @@
                 Opinion: opinion
             };
 
-            console.log("Submitting payload:", payload);
-
             showLoader();
-            try {
-                const { status, body } = await apiPost("/customers/visitor-feedback", payload);
-
-                // 409 or API message for duplicate
-                if (status === 409 || (body.Message && body.Message.toLowerCase().includes("already submitted"))) {
-                    document.getElementById("formSection").style.display = "none";
-                    document.getElementById("errorSection").style.display = "block";
-                    return;
-                }
-
-                if (body.Status && body.Status.toLowerCase() === "success") {
-                    document.getElementById("formSection").style.display = "none";
-                    document.getElementById("thankYouSection").style.display = "block";
-                } else {
-                    alert("❌ Error: " + (body.Message || `HTTP ${status}`));
-                }
-            } catch (err) {
-                console.error("POST error:", err);
-                alert("❌ Could not submit feedback.");
-            } finally {
-                hideLoader();
-            }
+            fetch(`${domain}/customers/visitor-feedback`, {
+                method: "POST",
+                headers: {
+                    "Authorization": `Bearer ${token}`,
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(payload)
+            })
+                .then(res => res.json())
+                .then(r => {
+                    hideLoader();
+                    if (r.Status?.toLowerCase() === "success") {
+                        document.getElementById("formSection").style.display = "none";
+                        document.getElementById("thankYouSection").style.display = "block";
+                    } else if (r.Message?.toLowerCase().includes("already submitted")) {
+                        document.getElementById("formSection").style.display = "none";
+                        document.getElementById("errorSection").style.display = "block";
+                    } else {
+                        alert("❌ Error: " + (r.Message || "Unknown error"));
+                    }
+                })
+                .catch(err => { hideLoader(); alert("❌ Could not submit feedback."); console.error(err); });
         }
-        // expose to button onclick
-        window.submitFeedback = submitFeedback;
 
-        // --- Boot: load ticket/user info -----------------------------------------
+        // Load ticket info & auto-detect feedback already exists
         const urlParams = new URLSearchParams(window.location.search);
-        const rawTicketNumber = urlParams.get("ticketNumber") || "";
-        const trimmedTicketNumber = rawTicketNumber.replace(/^0+/, ""); // fallback without leading zeros
+        const ticketNumber = urlParams.get("ticketNumber");
 
-        (async function loadTicket() {
-            showLoader();
-            try {
-                // Try as-is first
-                let { status, body } = await apiGet(`/customers/by-ticket/${encodeURIComponent(rawTicketNumber)}`);
+        showLoader();
+        fetch(`${domain}/customers/by-ticket/${ticketNumber}`, { headers: { "Authorization": `Bearer ${token}` } })
+            .then(res => res.json())
+            .then(r => {
+                hideLoader();
+                if (r.Status?.toLowerCase() === "success") {
+                    const user = r.Data;
+                    ticketId = user.CaseId;
+                    document.getElementById("ticketNumber").innerText = `Ticket: ${user.TicketNumber}`;
+                    document.getElementById("userName").innerText = user.DisplayName;
 
-                // Fallback: if not found/empty, try without leading zeros
-                if (!(body.Status && body.Status.toLowerCase() === "success") && trimmedTicketNumber && trimmedTicketNumber !== rawTicketNumber) {
-                    ({ status, body } = await apiGet(`/customers/by-ticket/${encodeURIComponent(trimmedTicketNumber)}`));
-                }
-
-                if (body.Status && body.Status.toLowerCase() === "success") {
-                    const user = body.Data || {};
-                    ticketId = user.CaseId || null;
-                    document.getElementById("ticketNumber").innerText = `Ticket: ${user.TicketNumber || rawTicketNumber}`;
-                    document.getElementById("userName").innerText = user.DisplayName || user.FullName || "(Unknown)";
+                    // 🔹 Immediately show "Already Submitted" if API response indicates
+                    if (r.Message?.toLowerCase().includes("already submitted")) {
+                        document.getElementById("formSection").style.display = "none";
+                        document.getElementById("errorSection").style.display = "block";
+                    }
                 } else {
-                    console.error("by-ticket error:", body);
                     document.getElementById("ticketNumber").innerText = "Ticket Number: (Not Found)";
                     document.getElementById("userName").innerText = "(Unknown)";
                 }
-            } catch (err) {
-                console.error("GET error:", err);
-                document.getElementById("ticketNumber").innerText = "Ticket Number: (Not Found)";
-                document.getElementById("userName").innerText = "(Unknown)";
-            } finally {
-                hideLoader();
-            }
-        })();
+            })
+            .catch(err => { hideLoader(); console.error("Load error:", err); });
     </script>
+
 </body>
 </html>
