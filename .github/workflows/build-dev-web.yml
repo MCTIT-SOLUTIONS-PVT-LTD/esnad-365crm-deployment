@@ -33,6 +33,13 @@ jobs:
         (Get-Content $filePath) -replace "__DOMAIN__", "${{ env.DOMAIN }}" `
                                  -replace "__API_TOKEN__", "${{ env.API_TOKEN }}" `
         | Set-Content $filePath
+        
+    - name: Replace Tokens in VisitorSurvey.html
+      run: |
+        $filePath = "Web/TicketSystemWEB/ticketsystemWeb/wwwroot/VisitorSurvey.html"
+        (Get-Content $filePath) -replace "__DOMAIN__", "${{ env.DOMAIN }}" `
+                                -replace "__API_TOKEN__", "${{ env.API_TOKEN }}" `
+        | Set-Content $filePath
 
     - name: Build Web Project
       run: dotnet build Web/TicketSystemWEB/ticketsystemWeb/ticketsystemWeb.csproj --configuration Release
