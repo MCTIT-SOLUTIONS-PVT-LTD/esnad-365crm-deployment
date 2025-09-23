@@ -437,36 +437,51 @@
             console.log("Submitting payload:", payload);
 
             showLoader();
-            fetch(`${domain}/customers/by-ticket/${ticketNumber}`, {
-                headers: { "Authorization": `Bearer ${token}` }
-            })
-                .then(async res => {
-                    const text = await res.text();  // read raw
-                    console.log("Raw response:", text, "Status:", res.status);
+            function submitFeedback() {
+                let opinion = document.getElementById('comment').value.trim();
+                if (!q1Rating || !q2Rating) return alert("Please answer both rating questions.");
+                if (!ticketId) return alert("Cannot submit feedback. Ticket ID is missing.");
+                if (!opinion) opinion = "No comments added by customer";
 
-                    let r;
-                    try {
-                        r = JSON.parse(text);
-                    } catch {
-                        r = { Status: "error", Message: text || "Empty response" };
-                    }
+                const payload = {
+                    TicketId: ticketId,
+                    ServiceSatisfaction: q1Rating,
+                    StaffEfficiency: q2Rating,
+                    Reasons: getReasons(),
+                    SpecifyOther: getSpecifyOther(),
+                    Opinion: opinion
+                };
 
-                    hideLoader();
-                    if (r.Status?.toLowerCase() === "success") {
-                        const user = r.Data;
-                        ticketId = user.CaseId;
-                        document.getElementById("ticketNumber").innerText = `Ticket: ${user.TicketNumber}`;
-                        document.getElementById("userName").innerText = user.DisplayName || user.FullName || "(No Name)";
-                    } else {
-                        console.error("API error:", r);
-                        document.getElementById("ticketNumber").innerText = "Ticket Number: (Not Found)";
-                        document.getElementById("userName").innerText = "(Unknown)";
-                    }
+                console.log("Submitting payload:", payload);
+
+                showLoader();
+                fetch(`${domain}/customers/visitor-feedback`, {
+                    method: "POST",
+                    headers: {
+                        "Authorization": `Bearer ${token}`,
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify(payload)
                 })
-                .catch(err => {
-                    hideLoader();
-                    console.error("Fetch error:", err);
-                });
+                    .then(async res => {
+                        const text = await res.text();
+                        console.log("Visitor-feedback response:", res.status, text);
+                        let r;
+                        try { r = JSON.parse(text); } catch { r = { Status: "error", Message: text || "Empty response" }; }
+
+                        hideLoader();
+                        if (r.Status?.toLowerCase() === "success") {
+                            document.getElementById("formSection").style.display = "none";
+                            document.getElementById("thankYouSection").style.display = "block";
+                        } else if (r.Message?.toLowerCase().includes("already submitted")) {
+                            document.getElementById("formSection").style.display = "none";
+                            document.getElementById("errorSection").style.display = "block";
+                        } else {
+                            alert("❌ Error: " + (r.Message || "Unknown error"));
+                        }
+                    })
+                    .catch(err => { hideLoader(); console.error("Fetch error:", err); });
+            }
         }
 
         // Load ticket info
