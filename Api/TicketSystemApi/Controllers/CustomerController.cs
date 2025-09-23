@@ -216,5 +216,101 @@ namespace TicketSystemApi.Controllers
                     ApiResponse<object>.Error($"CRM error: {ex.Message}"));
             }
         }
+        [HttpPost]
+        [Route("visitor-feedback")]
+        public IHttpActionResult SubmitVisitorFeedback([FromBody] VisitorFeedbackModel model)
+        {
+            var authHeader = Request.Headers.Authorization;
+            string expectedToken = ConfigurationManager.AppSettings["ApiBearerToken"];
+
+            if (authHeader == null || authHeader.Scheme != "Bearer" || authHeader.Parameter != expectedToken)
+                return Content(HttpStatusCode.Unauthorized,
+                    ApiResponse<object>.Error("Unauthorized - Invalid bearer token"));
+
+            if (model == null || string.IsNullOrWhiteSpace(model.TicketId))
+                return Content(HttpStatusCode.BadRequest,
+                    ApiResponse<object>.Error("TicketId is required."));
+
+            try
+            {
+                var service = _crmService.GetService();
+                Guid ticketGuid = new Guid(model.TicketId);
+                Guid? contactGuid = null;
+
+                if (!string.IsNullOrWhiteSpace(model.ContactId))
+                    contactGuid = new Guid(model.ContactId);
+
+                // 🔍 Check if feedback already exists
+                var existingQuery = new QueryExpression("new_satisfactionsurveysms")
+                {
+                    ColumnSet = new ColumnSet("new_satisfactionsurveysmsid"),
+                    Criteria =
+            {
+                Conditions =
+                {
+                    new ConditionExpression("new_satisfactionsurveyticket", ConditionOperator.Equal, ticketGuid)
+                }
+            }
+                };
+
+                if (contactGuid.HasValue)
+                {
+                    existingQuery.Criteria.AddCondition("new_satisfactionsurveycontact", ConditionOperator.Equal, contactGuid.Value);
+                }
+
+                var existingFeedback = service.RetrieveMultiple(existingQuery);
+                if (existingFeedback.Entities.Any())
+                {
+                    return Content(HttpStatusCode.Conflict,
+                        ApiResponse<object>.Error("Visitor feedback already submitted for this case/contact."));
+                }
+
+                // ✅ Create new feedback record
+                var feedback = new Entity("new_satisfactionsurveysms");
+                feedback["new_satisfactionsurveyticket"] = new EntityReference("incident", ticketGuid);
+
+                if (contactGuid.HasValue)
+                    feedback["new_satisfactionsurveycontact"] = new EntityReference("contact", contactGuid.Value);
+
+                // Satisfaction with service (OptionSet 1–5)
+                if (model.ServiceSatisfaction >= 1 && model.ServiceSatisfaction <= 5)
+                    feedback["new_howsatisfiedareyouwiththeserviceprovideda"] =
+                        new OptionSetValue(model.ServiceSatisfaction);
+
+                // Staff efficiency (OptionSet 1–5)
+                if (model.StaffEfficiency >= 1 && model.StaffEfficiency <= 5)
+                    feedback["new_howsatisfiedareyouwiththeefficiencyofthes"] =
+                        new OptionSetValue(model.StaffEfficiency);
+
+                // Reasons (MultiSelect OptionSet)
+                // Reasons (MultiSelect OptionSet)
+                if (model.Reasons != null && model.Reasons.Any())
+                {
+                    feedback["new_helpusbetterunderstandwhyyouchosetovisitt"] =
+                        new OptionSetValueCollection(model.Reasons.Select(x => new OptionSetValue(x)).ToList());
+                }
+
+                // Specify other (Single Line of Text)
+                if (!string.IsNullOrWhiteSpace(model.SpecifyOther))
+                    feedback["new_name"] = model.SpecifyOther.Trim();
+
+                // Opinion (Multiple Lines of Text)
+                if (!string.IsNullOrWhiteSpace(model.Opinion))
+                    feedback["new_youropinionmatterstouspleaseshareyourcom"] = model.Opinion.Trim();
+
+                var feedbackId = service.Create(feedback);
+
+                return Ok(ApiResponse<object>.Success(new
+                {
+                    FeedbackId = feedbackId
+                }, "Visitor feedback submitted successfully"));
+            }
+            catch (Exception ex)
+            {
+                return Content(HttpStatusCode.InternalServerError,
+                    ApiResponse<object>.Error($"CRM error: {ex.Message}"));
+            }
+        }
+
     }
 }
