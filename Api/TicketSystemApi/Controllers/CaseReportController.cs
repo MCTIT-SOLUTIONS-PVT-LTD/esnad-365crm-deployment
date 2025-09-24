@@ -41,7 +41,15 @@ namespace TicketSystemApi.Controllers
                         "new_ticketclosuredate", "new_description", "new_ticketsubmissionchannel",
                         "new_businessunitid", "createdby", "modifiedby", "ownerid", "customerid",
                         "new_tickettype", "new_mainclassification", "new_subclassificationitem",
-                        "new_isreopened", "new_reopendatetime"
+                        "new_isreopened", "new_reopendatetime",
+
+                        // ✅ SLA Success Times
+                        "new_assignmentsucceededon", "new_processingsucceededon", "new_solutionverificationsucceededon",
+
+                        // ✅ SLA Violations
+                        "new_assignmentslaviolationl1", "new_assignmentslaviolationl2", "new_assignmentslaviolationl3",
+                        "new_slaviolationl1", "new_slaviolationl2", "new_slaviolationl3", "new_slaviolationl4",
+                        "new_verificationslaviolationl1", "new_verificationslaviolationl2", "new_verificationslaviolationl3"
                     ),
                     PageInfo = new PagingInfo
                     {
@@ -84,12 +92,12 @@ namespace TicketSystemApi.Controllers
                     var currentStage = MapStatusCodeToStage(e);
 
                     // Extract the SLA statuses from slaDetails and cast to string
-                    var assignmentStatus = GetSafeValue(slaDetails, "AssignmentTimeByKPI", "Status") as string;
-                    var processingStatus = GetSafeValue(slaDetails, "ProcessingTimeByKPI", "Status") as string;
-                    var solutionVStatus = GetSafeValue(slaDetails, "SolutionVerificationTimeByKPI", "Status") as string;
+                    //var assignmentStatus = GetSafeValue(slaDetails, "AssignmentTimeByKPI", "Status") as string;
+                    //var processingStatus = GetSafeValue(slaDetails, "ProcessingTimeByKPI", "Status") as string;
+                    //var solutionVStatus = GetSafeValue(slaDetails, "SolutionVerificationTimeByKPI", "Status") as string;
 
                     // Get the escalation level based on the extracted SLA statuses
-                    var escalationLevel = GetEscalationLevelFromStatuses(assignmentStatus, processingStatus, solutionVStatus);
+                   // var escalationLevel = GetEscalationLevelFromStatuses(assignmentStatus, processingStatus, solutionVStatus);
 
                     // Fetch the Customer Satisfaction (CSAT) data
                     var csat = GetCustomerSatisfactionFeedback(service, e.Id);
@@ -129,31 +137,55 @@ namespace TicketSystemApi.Controllers
 
                         // Other Fields
                         IsReopened = string.IsNullOrWhiteSpace(e.GetAttributeValue<string>("new_isreopened")) ? "No" : e.GetAttributeValue<string>("new_isreopened"),
-                        SlaViolation = GetSlaViolationStatus(service, e.Id),
+                        //SlaViolation = GetSlaViolationStatus(service, e.Id),
 
                         // SLA KPI Fields
-                        AssignmentTimeByKPI = GetSafeValue(slaDetails, "AssignmentTimeByKPI", "Status"),
-                        ProcessingTimeByKPI = GetSafeValue(slaDetails, "ProcessingTimeByKPI", "Status"),
-                        SolutionVerificationTimeByKPI = GetSafeValue(slaDetails, "SolutionVerificationTimeByKPI", "Status"),
+                        //AssignmentTimeByKPI = GetSafeValue(slaDetails, "AssignmentTimeByKPI", "Status"),
+                        //ProcessingTimeByKPI = GetSafeValue(slaDetails, "ProcessingTimeByKPI", "Status"),
+                        //SolutionVerificationTimeByKPI = GetSafeValue(slaDetails, "SolutionVerificationTimeByKPI", "Status"),
 
                         // Escalation Level
                         CurrentStage = currentStage,
-                        EscalationLevel = escalationLevel, // Set the escalation level here
+                        //EscalationLevel = escalationLevel, // Set the escalation level here
+                        EscalationLevel = GetEscalationLevel(e),
 
                         ReopenedOn = ConvertToKsaTime(e.GetAttributeValue<DateTime?>("new_reopendatetime"))?.ToString("yyyy-MM-dd HH:mm:ss"),
 
                         // Time Metrics for Assignment, Processing, and Solution Verification KPIs
-                        AssignmentWarningTime = GetSafeValue(slaDetails, "AssignmentTimeByKPI", "WarningTime"),
-                        AssignmentFailureTime = GetSafeValue(slaDetails, "AssignmentTimeByKPI", "FailureTime"),
-                        AssignmentSucceededOn = GetSafeValue(slaDetails, "AssignmentTimeByKPI", "SucceededOn"),
+                        //AssignmentWarningTime = GetSafeValue(slaDetails, "AssignmentTimeByKPI", "WarningTime"),
+                        //AssignmentFailureTime = GetSafeValue(slaDetails, "AssignmentTimeByKPI", "FailureTime"),
+                        //AssignmentSucceededOn = GetSafeValue(slaDetails, "AssignmentTimeByKPI", "SucceededOn"),
 
-                        ProcessingWarningTime = GetSafeValue(slaDetails, "ProcessingTimeByKPI", "WarningTime"),
-                        ProcessingFailureTime = GetSafeValue(slaDetails, "ProcessingTimeByKPI", "FailureTime"),
-                        ProcessingSucceededOn = GetSafeValue(slaDetails, "ProcessingTimeByKPI", "SucceededOn"),
+                        //ProcessingWarningTime = GetSafeValue(slaDetails, "ProcessingTimeByKPI", "WarningTime"),
+                        //ProcessingFailureTime = GetSafeValue(slaDetails, "ProcessingTimeByKPI", "FailureTime"),
+                        //ProcessingSucceededOn = GetSafeValue(slaDetails, "ProcessingTimeByKPI", "SucceededOn"),
 
-                        SolutionVerificationWarningTime = GetSafeValue(slaDetails, "SolutionVerificationTimeByKPI", "WarningTime"),
-                        SolutionVerificationFailureTime = GetSafeValue(slaDetails, "SolutionVerificationTimeByKPI", "FailureTime"),
-                        SolutionVerificationSucceededOn = GetSafeValue(slaDetails, "SolutionVerificationTimeByKPI", "SucceededOn"),
+                        //SolutionVerificationWarningTime = GetSafeValue(slaDetails, "SolutionVerificationTimeByKPI", "WarningTime"),
+                        //SolutionVerificationFailureTime = GetSafeValue(slaDetails, "SolutionVerificationTimeByKPI", "FailureTime"),
+                        //SolutionVerificationSucceededOn = GetSafeValue(slaDetails, "SolutionVerificationTimeByKPI", "SucceededOn"),
+
+                        // ✅ SLA Success Times
+                        AssignmentSucceededOn = ConvertToKsaTime(e.GetAttributeValue<DateTime?>("new_assignmentsucceededon"))?.ToString("yyyy-MM-dd HH:mm:ss"),
+                        ProcessingSucceededOn = ConvertToKsaTime(e.GetAttributeValue<DateTime?>("new_processingsucceededon"))?.ToString("yyyy-MM-dd HH:mm:ss"),
+                        SolutionVerificationSucceededOn = ConvertToKsaTime(e.GetAttributeValue<DateTime?>("new_solutionverificationsucceededon"))?.ToString("yyyy-MM-dd HH:mm:ss"),
+
+
+                        // ✅ SLA Violations - Approval & Forwarding
+                        AssignmentSlaViolationL1 = e.GetAttributeValue<bool?>("new_assignmentslaviolationl1") == true ? "Yes" : "No",
+                        AssignmentSlaViolationL2 = e.GetAttributeValue<bool?>("new_assignmentslaviolationl2") == true ? "Yes" : "No",
+                        AssignmentSlaViolationL3 = e.GetAttributeValue<bool?>("new_assignmentslaviolationl3") == true ? "Yes" : "No",
+
+                        // ✅ SLA Violations - Processing
+                        ProcessingSlaViolationL1 = e.GetAttributeValue<bool?>("new_slaviolationl1") == true ? "Yes" : "No",
+                        ProcessingSlaViolationL2 = e.GetAttributeValue<bool?>("new_slaviolationl2") == true ? "Yes" : "No",
+                        ProcessingSlaViolationL3 = e.GetAttributeValue<bool?>("new_slaviolationl3") == true ? "Yes" : "No",
+                        ProcessingSlaViolationL4 = e.GetAttributeValue<bool?>("new_slaviolationl4") == true ? "Yes" : "No",
+
+                        // ✅ SLA Violations - Verification
+                        VerificationSlaViolationL1 = e.GetAttributeValue<bool?>("new_verificationslaviolationl1") == true ? "Yes" : "No",
+                        VerificationSlaViolationL2 = e.GetAttributeValue<bool?>("new_verificationslaviolationl2") == true ? "Yes" : "No",
+                        VerificationSlaViolationL3 = e.GetAttributeValue<bool?>("new_verificationslaviolationl3") == true ? "Yes" : "No",
+
                     };
                 }).ToList();
 
@@ -264,23 +296,23 @@ namespace TicketSystemApi.Controllers
                 duration.Seconds);
         }
 
-        private string GetEscalationLevelFromStatuses(string assignmentStatus, string processingStatus, string solutionVStatus)
-        {
-            bool a = string.Equals(assignmentStatus, "In Progress", StringComparison.OrdinalIgnoreCase);
-            bool p = string.Equals(processingStatus, "In Progress", StringComparison.OrdinalIgnoreCase);
-            bool s = string.Equals(solutionVStatus, "In Progress", StringComparison.OrdinalIgnoreCase);
+        //private string GetEscalationLevelFromStatuses(string assignmentStatus, string processingStatus, string solutionVStatus)
+        //{
+        //    bool a = string.Equals(assignmentStatus, "In Progress", StringComparison.OrdinalIgnoreCase);
+        //    bool p = string.Equals(processingStatus, "In Progress", StringComparison.OrdinalIgnoreCase);
+        //    bool s = string.Equals(solutionVStatus, "In Progress", StringComparison.OrdinalIgnoreCase);
 
-            if (a && p && s) return "Level 1";
-            if (!a && p && s) return "Level 2";
-            if (!a && !p && s) return "Level 3";
-            return "Not Applicable";
-        }
+        //    if (a && p && s) return "Level 1";
+        //    if (!a && p && s) return "Level 2";
+        //    if (!a && !p && s) return "Level 3";
+        //    return "Not Applicable";
+        //}
 
         private Dictionary<string, Dictionary<string, object>> GetSlaDetailsWithTimestamps(IOrganizationService service, Guid caseId)
         {
             var query = new QueryExpression("slakpiinstance")
             {
-                ColumnSet = new ColumnSet("name", "status", "failuretime", "warningtime", "succeededon"), // ✅ Fixed: removed "regardingobjectid"
+                ColumnSet = new ColumnSet("name", "failuretime", "succeededon"), // ✅ status & warningtime removed
                 Criteria = new FilterExpression
                 {
                     Conditions = { new ConditionExpression("regarding", ConditionOperator.Equal, caseId) }
@@ -297,26 +329,22 @@ namespace TicketSystemApi.Controllers
                 var rawName = kpi.GetAttributeValue<string>("name");
                 if (string.IsNullOrWhiteSpace(rawName)) continue;
 
-                var normalizedKey = rawName.Replace(" ", "").Replace("byKPI", "ByKPI");
+                var normalizedKey = rawName
+                    .Replace(" ", "")
+                    .Replace("–", "") // remove en-dash
+                    .Replace("-", "") // remove hyphen
+                    .Replace("byKPI", "ByKPI");
 
                 if (!details.ContainsKey(normalizedKey))
-                {
                     details[normalizedKey] = new Dictionary<string, object>();
-                }
-
-                var status = kpi.FormattedValues.Contains("status") ? kpi.FormattedValues["status"] : null;
 
                 DateTime? failureTime = kpi.GetAttributeValue<DateTime?>("failuretime");
-                DateTime? warningTime = kpi.GetAttributeValue<DateTime?>("warningtime");
                 DateTime? succeededOn = kpi.GetAttributeValue<DateTime?>("succeededon");
 
-                details[normalizedKey]["Status"] = status;
                 details[normalizedKey]["FailureTime"] = failureTime.HasValue
                     ? TimeZoneInfo.ConvertTimeFromUtc(failureTime.Value, ksaTimeZone).ToString("yyyy-MM-dd HH:mm:ss")
                     : null;
-                details[normalizedKey]["WarningTime"] = warningTime.HasValue
-                    ? TimeZoneInfo.ConvertTimeFromUtc(warningTime.Value, ksaTimeZone).ToString("yyyy-MM-dd HH:mm:ss")
-                    : null;
+
                 details[normalizedKey]["SucceededOn"] = succeededOn.HasValue
                     ? TimeZoneInfo.ConvertTimeFromUtc(succeededOn.Value, ksaTimeZone).ToString("yyyy-MM-dd HH:mm:ss")
                     : null;
@@ -329,7 +357,7 @@ namespace TicketSystemApi.Controllers
         {
             var query = new QueryExpression("slakpiinstance")
             {
-                ColumnSet = new ColumnSet("name", "status"),
+                ColumnSet = new ColumnSet("name", "failuretime", "succeededon"),
                 Criteria = new FilterExpression
                 {
                     Conditions = { new ConditionExpression("regarding", ConditionOperator.Equal, caseId) }
@@ -341,16 +369,12 @@ namespace TicketSystemApi.Controllers
             foreach (var kpi in result.Entities)
             {
                 var rawName = kpi.GetAttributeValue<string>("name") ?? "";
-                var normalizedName = rawName.Replace(" ", "").Replace("byKPI", "ByKPI");
-                var statusFormatted = kpi.FormattedValues.Contains("status") ? kpi.FormattedValues["status"] : null;
+                var normalizedName = rawName.Replace(" ", "").Replace("–", "").Replace("-", "");
 
-                if (!string.IsNullOrEmpty(statusFormatted) &&
-                    statusFormatted.ToLower().Contains("noncompliant") &&
-                    (
-                        normalizedName == "AssignmentTimeByKPI" ||
-                        normalizedName == "ProcessingTimeByKPI" ||
-                        normalizedName == "SolutionVerificationTimeByKPI"
-                    ))
+                var failureTime = kpi.GetAttributeValue<DateTime?>("failuretime");
+                var succeededOn = kpi.GetAttributeValue<DateTime?>("succeededon");
+
+                if (failureTime.HasValue && !succeededOn.HasValue)
                 {
                     return "Yes";
                 }
@@ -358,6 +382,33 @@ namespace TicketSystemApi.Controllers
 
             return "No";
         }
+
+
+        private string GetEscalationLevel(Entity e)
+        {
+            // Track escalation level text
+            string escalation = "No Escalation";
+
+            // ✅ Approval (check all levels, update if found)
+            if (e.GetAttributeValue<bool?>("new_assignmentslaviolationl1") == true) escalation = "Approval Escalation - Level 1";
+            if (e.GetAttributeValue<bool?>("new_assignmentslaviolationl2") == true) escalation = "Approval Escalation - Level 2";
+            if (e.GetAttributeValue<bool?>("new_assignmentslaviolationl3") == true) escalation = "Approval Escalation - Level 3";
+
+            // ✅ Processing (overwrite if later escalation found)
+            if (e.GetAttributeValue<bool?>("new_slaviolationl1") == true) escalation = "Processing Escalation - Level 1";
+            if (e.GetAttributeValue<bool?>("new_slaviolationl2") == true) escalation = "Processing Escalation - Level 2";
+            if (e.GetAttributeValue<bool?>("new_slaviolationl3") == true) escalation = "Processing Escalation - Level 3";
+            if (e.GetAttributeValue<bool?>("new_slaviolationl4") == true) escalation = "Processing Escalation - Level 4";
+
+            // ✅ Verification (overwrite if even later escalation found)
+            if (e.GetAttributeValue<bool?>("new_verificationslaviolationl1") == true) escalation = "Verification Escalation - Level 1";
+            if (e.GetAttributeValue<bool?>("new_verificationslaviolationl2") == true) escalation = "Verification Escalation - Level 2";
+            if (e.GetAttributeValue<bool?>("new_verificationslaviolationl3") == true) escalation = "Verification Escalation - Level 3";
+
+            return escalation;
+        }
+
+
         //  ===== UNUSED CODE BELOW =====
 
 
