@@ -143,6 +143,54 @@ namespace TicketSystemApi.Controllers
             }
         }
 
+        [HttpGet]
+        [Route("by-contact/{contactId}")]
+        public IHttpActionResult GetCustomerByContact(Guid contactId)
+        {
+            var authHeader = Request.Headers.Authorization;
+            string expectedToken = ConfigurationManager.AppSettings["ApiBearerToken"];
+
+            if (authHeader == null || authHeader.Scheme != "Bearer" || authHeader.Parameter != expectedToken)
+                return Content(HttpStatusCode.Unauthorized,
+                    ApiResponse<object>.Error("Unauthorized - Invalid bearer token"));
+
+            if (contactId == Guid.Empty)
+                return Content(HttpStatusCode.BadRequest,
+                    ApiResponse<object>.Error("ContactId is required."));
+
+            try
+            {
+                var service = _crmService.GetService();
+
+                // 🔍 Retrieve Contact by ID
+                var contact = service.Retrieve("contact", contactId,
+                    new ColumnSet("contactid", "firstname", "lastname", "fullname",
+                                  "emailaddress1", "mobilephone", "statuscode", "createdon"));
+
+                if (contact == null)
+                    return Content(HttpStatusCode.NotFound,
+                        ApiResponse<object>.Error($"No contact found for id: {contactId}"));
+
+                return Ok(ApiResponse<object>.Success(new
+                {
+                    ContactId = contact.Id,
+                    FirstName = contact.GetAttributeValue<string>("firstname"),
+                    LastName = contact.GetAttributeValue<string>("lastname"),
+                    FullName = contact.GetAttributeValue<string>("fullname"),
+                    Email = contact.GetAttributeValue<string>("emailaddress1"),
+                    MobilePhone = contact.GetAttributeValue<string>("mobilephone"),
+                    Status = contact.FormattedValues.Contains("statuscode")
+                                ? contact.FormattedValues["statuscode"]
+                                : null,
+                    CreatedOn = contact.GetAttributeValue<DateTime?>("createdon")
+                }, "Contact retrieved successfully"));
+            }
+            catch (Exception ex)
+            {
+                return Content(HttpStatusCode.InternalServerError,
+                    ApiResponse<object>.Error($"CRM error: {ex.Message}"));
+            }
+        }
 
 
         [HttpPost]
@@ -227,20 +275,16 @@ namespace TicketSystemApi.Controllers
                 return Content(HttpStatusCode.Unauthorized,
                     ApiResponse<object>.Error("Unauthorized - Invalid bearer token"));
 
-            if (model == null || string.IsNullOrWhiteSpace(model.TicketId))
+            if (model == null || string.IsNullOrWhiteSpace(model.ContactId))
                 return Content(HttpStatusCode.BadRequest,
-                    ApiResponse<object>.Error("TicketId is required."));
+                    ApiResponse<object>.Error("ContactId is required."));
 
             try
             {
                 var service = _crmService.GetService();
-                Guid ticketGuid = new Guid(model.TicketId);
-                Guid? contactGuid = null;
+                Guid contactGuid = new Guid(model.ContactId);
 
-                if (!string.IsNullOrWhiteSpace(model.ContactId))
-                    contactGuid = new Guid(model.ContactId);
-
-                // 🔍 Check if feedback already exists
+                // 🔍 Check if feedback already exists for this contact
                 var existingQuery = new QueryExpression("new_satisfactionsurveysms")
                 {
                     ColumnSet = new ColumnSet("new_satisfactionsurveysmsid"),
@@ -248,29 +292,23 @@ namespace TicketSystemApi.Controllers
             {
                 Conditions =
                 {
-                    new ConditionExpression("new_satisfactionsurveyticket", ConditionOperator.Equal, ticketGuid)
+                    new ConditionExpression("new_satisfactionsurveycontact", ConditionOperator.Equal, contactGuid)
                 }
             }
                 };
-
-                if (contactGuid.HasValue)
-                {
-                    existingQuery.Criteria.AddCondition("new_satisfactionsurveycontact", ConditionOperator.Equal, contactGuid.Value);
-                }
 
                 var existingFeedback = service.RetrieveMultiple(existingQuery);
                 if (existingFeedback.Entities.Any())
                 {
                     return Content(HttpStatusCode.Conflict,
-                        ApiResponse<object>.Error("Visitor feedback already submitted for this case/contact."));
+                        ApiResponse<object>.Error("Visitor feedback already submitted for this contact."));
                 }
 
                 // ✅ Create new feedback record
-                var feedback = new Entity("new_satisfactionsurveysms");
-                feedback["new_satisfactionsurveyticket"] = new EntityReference("incident", ticketGuid);
-
-                if (contactGuid.HasValue)
-                    feedback["new_satisfactionsurveycontact"] = new EntityReference("contact", contactGuid.Value);
+                var feedback = new Entity("new_satisfactionsurveysms")
+                {
+                    ["new_satisfactionsurveycontact"] = new EntityReference("contact", contactGuid)
+                };
 
                 // Satisfaction with service (OptionSet 1–5)
                 if (model.ServiceSatisfaction >= 1 && model.ServiceSatisfaction <= 5)
@@ -283,14 +321,13 @@ namespace TicketSystemApi.Controllers
                         new OptionSetValue(model.StaffEfficiency);
 
                 // Reasons (MultiSelect OptionSet)
-                // Reasons (MultiSelect OptionSet)
                 if (model.Reasons != null && model.Reasons.Any())
                 {
                     feedback["new_helpusbetterunderstandwhyyouchosetovisitt"] =
                         new OptionSetValueCollection(model.Reasons.Select(x => new OptionSetValue(x)).ToList());
                 }
 
-                // Specify other (Single Line of Text)
+                // Specify other (Single Line of Text → mapped to "new_name")
                 if (!string.IsNullOrWhiteSpace(model.SpecifyOther))
                     feedback["new_name"] = model.SpecifyOther.Trim();
 
@@ -311,6 +348,5 @@ namespace TicketSystemApi.Controllers
                     ApiResponse<object>.Error($"CRM error: {ex.Message}"));
             }
         }
-
     }
 }
