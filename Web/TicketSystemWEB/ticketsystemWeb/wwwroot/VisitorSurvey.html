@@ -309,7 +309,7 @@
         const domain = window.ENV?.DOMAIN || "__DOMAIN__";
         const token = window.ENV?.TOKEN || "__API_TOKEN__";
 
-        let q1Rating = 0, q2Rating = 0, ticketId = null;
+        let q1Rating = 0, q2Rating = 0, contactId = null;
         let currentLang = "ar";
 
         // CRM OptionSet numeric values for Reasons
@@ -338,7 +338,7 @@
                 thankYouTitle: "Thank You!",
                 thankYouText: "Your feedback has been submitted successfully.",
                 alreadySubmittedTitle: "Feedback Already Submitted",
-                alreadySubmittedText: "You have already provided feedback for this ticket. Thank you!"
+                alreadySubmittedText: "You have already provided feedback for this contact. Thank you!"
             },
             ar: {
                 title: "ملاحظاتك",
@@ -357,7 +357,7 @@
                 thankYouTitle: "شكرًا لك!",
                 thankYouText: "تم إرسال ملاحظاتك بنجاح.",
                 alreadySubmittedTitle: "تم إرسال الملاحظات مسبقًا",
-                alreadySubmittedText: "لقد قدمت ملاحظاتك بالفعل لهذه التذكرة. شكرًا لك!"
+                alreadySubmittedText: "لقد قدمت ملاحظاتك بالفعل لهذا المستخدم. شكرًا لك!"
             }
         };
 
@@ -433,11 +433,11 @@
         function submitFeedback() {
             let opinion = document.getElementById('comment').value.trim();
             if (!q1Rating || !q2Rating) return alert("Please answer both rating questions.");
-            if (!ticketId) return alert("Cannot submit feedback. Ticket ID is missing.");
+            if (!contactId) return alert("Cannot submit feedback. Contact ID is missing.");
             if (!opinion) opinion = "No comments added by customer";
 
             const payload = {
-                TicketId: ticketId,
+                ContactId: contactId,   // ✅ use ContactId
                 ServiceSatisfaction: q1Rating,
                 StaffEfficiency: q2Rating,
                 Reasons: getReasons(),
@@ -470,33 +470,33 @@
                 .catch(err => { hideLoader(); alert("❌ Could not submit feedback."); console.error(err); });
         }
 
-        // 🔹 Load ticket info
+        // 🔹 Load contact info
         const urlParams = new URLSearchParams(window.location.search);
-        const ticketNumber = urlParams.get("ticketNumber");
+        const contactIdParam = urlParams.get("contactId");
 
         showLoader();
-        fetch(`${domain}/customers/by-ticket/${ticketNumber}`, { headers: { "Authorization": `Bearer ${token}` } })
+        fetch(`${domain}/customers/by-contact/${contactIdParam}`, {
+            headers: { "Authorization": `Bearer ${token}` }
+        })
             .then(res => res.json())
             .then(r => {
                 hideLoader();
                 if (r.Status?.toLowerCase() === "success") {
                     const user = r.Data;
-                    ticketId = user.CaseId;
-                    document.getElementById("ticketNumber").innerText = `Ticket: ${user.TicketNumber}`;
-                    document.getElementById("userName").innerText = user.DisplayName;
+                    contactId = user.ContactId;   // ✅ store ContactId
+                    document.getElementById("ticketNumber").innerText = `Contact ID: ${user.ContactId}`;
+                    document.getElementById("userName").innerText = user.FullName || "(No Name)";
 
-                    // If backend flags already submitted → show immediately
                     if (r.Message?.toLowerCase().includes("already submitted")) {
                         document.getElementById("formSection").style.display = "none";
                         document.getElementById("errorSection").style.display = "block";
                     }
                 } else {
-                    document.getElementById("ticketNumber").innerText = "Ticket Number: (Not Found)";
+                    document.getElementById("ticketNumber").innerText = "Contact: (Not Found)";
                     document.getElementById("userName").innerText = "(Unknown)";
                 }
             })
             .catch(err => { hideLoader(); console.error("Load error:", err); });
     </script>
-
 </body>
 </html>
