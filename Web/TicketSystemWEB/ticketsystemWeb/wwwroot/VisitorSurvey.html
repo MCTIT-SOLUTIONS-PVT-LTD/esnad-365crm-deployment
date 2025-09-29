@@ -309,7 +309,7 @@
         const domain = window.ENV?.DOMAIN || "__DOMAIN__";
         const token = window.ENV?.TOKEN || "__API_TOKEN__";
 
-        let q1Rating = 0, q2Rating = 0, ticketId = null;
+        let q1Rating = 0, q2Rating = 0, contactId = null;
         let currentLang = "ar";
 
         // CRM OptionSet numeric values for Reasons
@@ -338,7 +338,7 @@
                 thankYouTitle: "Thank You!",
                 thankYouText: "Your feedback has been submitted successfully.",
                 alreadySubmittedTitle: "Feedback Already Submitted",
-                alreadySubmittedText: "You have already provided feedback for this ticket. Thank you!"
+                alreadySubmittedText: "You have already provided feedback for this contact. Thank you!"
             },
             ar: {
                 title: "ملاحظاتك",
@@ -357,7 +357,7 @@
                 thankYouTitle: "شكرًا لك!",
                 thankYouText: "تم إرسال ملاحظاتك بنجاح.",
                 alreadySubmittedTitle: "تم إرسال الملاحظات مسبقًا",
-                alreadySubmittedText: "لقد قدمت ملاحظاتك بالفعل لهذه التذكرة. شكرًا لك!"
+                alreadySubmittedText: "لقد قدمت ملاحظاتك بالفعل لهذا المستخدم. شكرًا لك!"
             }
         };
 
@@ -437,7 +437,7 @@
             if (!opinion) opinion = "No comments added by customer";
 
             const payload = {
-                ContactId: contactId,   // 🔹 changed
+                ContactId: contactId,   // ✅ use ContactId
                 ServiceSatisfaction: q1Rating,
                 StaffEfficiency: q2Rating,
                 Reasons: getReasons(),
@@ -470,7 +470,7 @@
                 .catch(err => { hideLoader(); alert("❌ Could not submit feedback."); console.error(err); });
         }
 
-        // 🔹 Load ticket info
+        // 🔹 Load contact info
         const urlParams = new URLSearchParams(window.location.search);
         const contactIdParam = urlParams.get("contactId");
 
@@ -483,7 +483,7 @@
                 hideLoader();
                 if (r.Status?.toLowerCase() === "success") {
                     const user = r.Data;
-                    contactId = user.ContactId;   // 🔹 store ContactId
+                    contactId = user.ContactId;   // ✅ store ContactId
                     document.getElementById("ticketNumber").innerText = `Contact ID: ${user.ContactId}`;
                     document.getElementById("userName").innerText = user.FullName || "(No Name)";
 
@@ -498,7 +498,5 @@
             })
             .catch(err => { hideLoader(); console.error("Load error:", err); });
     </script>
-    </script>
-
 </body>
 </html>
