@@ -433,11 +433,11 @@
         function submitFeedback() {
             let opinion = document.getElementById('comment').value.trim();
             if (!q1Rating || !q2Rating) return alert("Please answer both rating questions.");
-            if (!ticketId) return alert("Cannot submit feedback. Ticket ID is missing.");
+            if (!contactId) return alert("Cannot submit feedback. Contact ID is missing.");
             if (!opinion) opinion = "No comments added by customer";
 
             const payload = {
-                TicketId: ticketId,
+                ContactId: contactId,   // 🔹 changed
                 ServiceSatisfaction: q1Rating,
                 StaffEfficiency: q2Rating,
                 Reasons: getReasons(),
@@ -472,30 +472,32 @@
 
         // 🔹 Load ticket info
         const urlParams = new URLSearchParams(window.location.search);
-        const ticketNumber = urlParams.get("ticketNumber");
+        const contactIdParam = urlParams.get("contactId");
 
         showLoader();
-        fetch(`${domain}/customers/by-ticket/${ticketNumber}`, { headers: { "Authorization": `Bearer ${token}` } })
+        fetch(`${domain}/customers/by-contact/${contactIdParam}`, {
+            headers: { "Authorization": `Bearer ${token}` }
+        })
             .then(res => res.json())
             .then(r => {
                 hideLoader();
                 if (r.Status?.toLowerCase() === "success") {
                     const user = r.Data;
-                    ticketId = user.CaseId;
-                    document.getElementById("ticketNumber").innerText = `Ticket: ${user.TicketNumber}`;
-                    document.getElementById("userName").innerText = user.DisplayName;
+                    contactId = user.ContactId;   // 🔹 store ContactId
+                    document.getElementById("ticketNumber").innerText = `Contact ID: ${user.ContactId}`;
+                    document.getElementById("userName").innerText = user.FullName || "(No Name)";
 
-                    // If backend flags already submitted → show immediately
                     if (r.Message?.toLowerCase().includes("already submitted")) {
                         document.getElementById("formSection").style.display = "none";
                         document.getElementById("errorSection").style.display = "block";
                     }
                 } else {
-                    document.getElementById("ticketNumber").innerText = "Ticket Number: (Not Found)";
+                    document.getElementById("ticketNumber").innerText = "Contact: (Not Found)";
                     document.getElementById("userName").innerText = "(Unknown)";
                 }
             })
             .catch(err => { hideLoader(); console.error("Load error:", err); });
+    </script>
     </script>
 
 </body>
