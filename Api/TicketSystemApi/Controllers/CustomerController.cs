@@ -268,10 +268,12 @@ namespace TicketSystemApi.Controllers
                     string crNumber = account.GetAttributeValue<string>("new_crnumber");
                     string accName = account.GetAttributeValue<string>("name");
 
-                    // Store these details in text fields on feedback (adjust to your schema)
                     feedback["new_name"] = accName;
                     feedback["new_youropinionmatterstouspleaseshareyourcom"] =
                         $"Representative Phone: {repPhone}, CR Number: {crNumber}";
+
+                    // ✅ FIX: link feedback to Account using the Account lookup field
+                    feedback["new_satisfactionsurveycompany"] = new EntityReference("account", accountId);
 
                     linkedVia = "Account";
                 }
@@ -287,14 +289,16 @@ namespace TicketSystemApi.Controllers
                     feedback["new_helpusbetterunderstandwhyyouchosetovisitt"] =
                         new OptionSetValueCollection(model.Reasons.Select(r => new OptionSetValue(r)).ToList());
 
-                if (!string.IsNullOrWhiteSpace(model.SpecifyOther))
-                    feedback["new_name"] = (feedback.Contains("new_name") ? feedback["new_name"] + " | " : "") + model.SpecifyOther.Trim();
+                // ✅ Account Name only
+               // feedback["new_name"] = accName;
 
+                // ✅ Specify Other → goes only into "Specify other" field
+                if (!string.IsNullOrWhiteSpace(model.SpecifyOther))
+                    feedback["new_name"] = model.SpecifyOther.Trim();
+
+                // ✅ Opinion → goes only into "Your opinion matters..." field
                 if (!string.IsNullOrWhiteSpace(model.Opinion))
-                    feedback["new_youropinionmatterstouspleaseshareyourcom"] =
-                        (feedback.Contains("new_youropinionmatterstouspleaseshareyourcom")
-                            ? feedback["new_youropinionmatterstouspleaseshareyourcom"] + " | " + model.Opinion.Trim()
-                            : model.Opinion.Trim());
+                    feedback["new_youropinionmatterstouspleaseshareyourcom"] = model.Opinion.Trim();
 
                 var feedbackId = service.Create(feedback);
 
