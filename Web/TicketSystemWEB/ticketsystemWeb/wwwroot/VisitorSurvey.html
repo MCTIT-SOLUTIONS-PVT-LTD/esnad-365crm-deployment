@@ -306,20 +306,24 @@
     </div>
 
     <script>
+        // ====== Config ======
         const domain = window.ENV?.DOMAIN || "__DOMAIN__";
         const token = window.ENV?.TOKEN || "__API_TOKEN__";
 
-        let q1Rating = 0, q2Rating = 0, contactId = null;
+        // ====== State ======
+        let q1Rating = 0, q2Rating = 0;
         let currentLang = "ar";
 
-        // CRM OptionSet numeric values for Reasons
-        const reasonValues = {
-            reason1: 1,
-            reason2: 2,
-            reason3: 3,
-            reasonOther: 4
-        };
+        // ID & key for POST body: ContactId or AccountId
+        let submitKey = null;   // "ContactId" | "AccountId"
+        let submitId = null;   // GUID
+        let visitorId = null;   // GUID (not posted, but available)
+        let entityType = null;  // "Contact" | "Account"
 
+        // OptionSet values for reasons
+        const reasonValues = { reason1: 1, reason2: 2, reason3: 3, reasonOther: 4 };
+
+        // i18n
         const translations = {
             en: {
                 title: "Your Feedback",
@@ -327,18 +331,15 @@
                 q2: "How satisfied are you with the efficiency of the staff who assisted you?",
                 q3: "Help us better understand why you chose to visit the service center instead of using other communication channels:",
                 q4: "Your opinion matters to us — please share your comments and suggestions:",
-                reasons: [
-                    "Ineffectiveness of digital channels",
-                    "Insufficient information available in the Help Center",
-                    "Insufficient information available on the Ta’adeen platform",
-                    "Other"
-                ],
+                reasons: ["Ineffectiveness of digital channels", "Insufficient information available in the Help Center", "Insufficient information available on the Ta’adeen platform", "Other"],
                 otherPlaceholder: "Please specify...",
                 submit: "Submit",
                 thankYouTitle: "Thank You!",
                 thankYouText: "Your feedback has been submitted successfully.",
                 alreadySubmittedTitle: "Feedback Already Submitted",
-                alreadySubmittedText: "You have already provided feedback for this contact. Thank you!"
+                alreadySubmittedText: "You have already provided feedback for this visitor. Thank you!",
+                mustAnswer: "Please answer both rating questions.",
+                missingEntity: "Cannot submit feedback. Visitor details not loaded yet."
             },
             ar: {
                 title: "ملاحظاتك",
@@ -346,49 +347,46 @@
                 q2: "ما مدى رضاك عن كفاءة الموظف الذي قام بخدمتك ؟",
                 q3: "ساعدنا أكثر بمعرفة سبب اختيارك زيارة مركز الخدمة بدلاً من قنوات التواصل الاخرى ؟ ",
                 q4: "رأيك يهمنا شاركنا ملاحظاتك ومقترحاتك:",
-                reasons: [
-                    "عدم فاعلية القنوات الرقمية",
-                    "عدم وجود معلومات كافية في مركز المساعدة",
-                    "عدم وجود معلومات كافية في منصة تعدين",
-                    "خيار آخر"
-                ],
+                reasons: ["عدم فاعلية القنوات الرقمية", "عدم وجود معلومات كافية في مركز المساعدة", "عدم وجود معلومات كافية في منصة تعدين", "خيار آخر"],
                 otherPlaceholder: "الرجاء التحديد...",
                 submit: "إرسال",
                 thankYouTitle: "شكرًا لك!",
                 thankYouText: "تم إرسال ملاحظاتك بنجاح.",
                 alreadySubmittedTitle: "تم إرسال الملاحظات مسبقًا",
-                alreadySubmittedText: "لقد قدمت ملاحظاتك بالفعل لهذا المستخدم. شكرًا لك!"
+                alreadySubmittedText: "لقد قدمت ملاحظاتك بالفعل لهذا الزائر. شكرًا لك!",
+                mustAnswer: "يرجى الإجابة على سؤالَي التقييم.",
+                missingEntity: "لا يمكن الإرسال قبل تحميل بيانات الزائر."
             }
         };
 
+        function t(key) { return (translations[currentLang] || translations.en)[key]; }
+
         function setLanguage(lang) {
             currentLang = lang;
-            const t = translations[lang] || translations.en;
+            const tx = translations[lang] || translations.en;
 
-            document.querySelector("#formSection h4").innerText = t.title;
-            document.getElementById("q1Label").innerText = t.q1;
-            document.getElementById("q2Label").innerText = t.q2;
-            document.getElementById("q3Label").innerText = t.q3;
-            document.getElementById("q4Label").innerText = t.q4;
+            document.querySelector("#formSection h4").innerText = tx.title;
+            document.getElementById("q1Label").innerText = tx.q1;
+            document.getElementById("q2Label").innerText = tx.q2;
+            document.getElementById("q3Label").innerText = tx.q3;
+            document.getElementById("q4Label").innerText = tx.q4;
 
-            document.querySelector("label[for='reason1']").innerText = t.reasons[0];
-            document.querySelector("label[for='reason2']").innerText = t.reasons[1];
-            document.querySelector("label[for='reason3']").innerText = t.reasons[2];
-            document.querySelector("label[for='reasonOther']").innerText = t.reasons[3];
+            document.querySelector("label[for='reason1']").innerText = tx.reasons[0];
+            document.querySelector("label[for='reason2']").innerText = tx.reasons[1];
+            document.querySelector("label[for='reason3']").innerText = tx.reasons[2];
+            document.querySelector("label[for='reasonOther']").innerText = tx.reasons[3];
 
-            document.getElementById("reasonOtherText").placeholder = t.otherPlaceholder;
-            document.querySelector(".btn-submit").innerText = t.submit;
+            document.getElementById("reasonOtherText").placeholder = tx.otherPlaceholder;
+            document.querySelector(".btn-submit").innerText = tx.submit;
 
-            // update ThankYou & Error sections
-            document.querySelector("#thankYouSection h4").innerText = t.thankYouTitle;
-            document.querySelector("#thankYouSection p").innerText = t.thankYouText;
-            document.querySelector("#errorSection h4").innerText = t.alreadySubmittedTitle;
-            document.querySelector("#errorSection p").innerText = t.alreadySubmittedText;
+            document.querySelector("#thankYouSection h4").innerText = tx.thankYouTitle;
+            document.querySelector("#thankYouSection p").innerText = tx.thankYouText;
+            document.querySelector("#errorSection h4").innerText = tx.alreadySubmittedTitle;
+            document.querySelector("#errorSection p").innerText = tx.alreadySubmittedText;
 
             document.body.dir = lang === "ar" ? "rtl" : "ltr";
             document.querySelector(".feedback-card").style.textAlign = lang === "ar" ? "right" : "left";
         }
-
         document.getElementById("languageSwitcher").addEventListener("change", e => setLanguage(e.target.value));
         setLanguage("ar");
 
@@ -399,12 +397,13 @@
                 const v = parseInt(star.getAttribute('data-value'));
                 if (q === "q1") q1Rating = v;
                 if (q === "q2") q2Rating = v;
-                document.querySelectorAll(`.star[data-question="${q}"]`)
-                    .forEach(s => s.classList.toggle('selected', parseInt(s.getAttribute('data-value')) <= v));
+                document.querySelectorAll(`.star[data-question="${q}"]`).forEach(s => {
+                    s.classList.toggle('selected', parseInt(s.getAttribute('data-value')) <= v);
+                });
             });
         });
 
-        // Show/hide textarea for "Other"
+        // "Other" toggle
         document.getElementById("reasonOther").addEventListener("change", function () {
             const otherText = document.getElementById("reasonOtherText");
             otherText.style.display = this.checked ? "block" : "none";
@@ -412,91 +411,145 @@
         });
 
         function getReasons() {
-            const reasons = [];
-            if (document.getElementById("reason1").checked) reasons.push(reasonValues.reason1);
-            if (document.getElementById("reason2").checked) reasons.push(reasonValues.reason2);
-            if (document.getElementById("reason3").checked) reasons.push(reasonValues.reason3);
-            if (document.getElementById("reasonOther").checked) reasons.push(reasonValues.reasonOther);
-            return reasons;
+            const res = [];
+            if (document.getElementById("reason1").checked) res.push(reasonValues.reason1);
+            if (document.getElementById("reason2").checked) res.push(reasonValues.reason2);
+            if (document.getElementById("reason3").checked) res.push(reasonValues.reason3);
+            if (document.getElementById("reasonOther").checked) res.push(reasonValues.reasonOther);
+            return res;
         }
-
         function getSpecifyOther() {
-            if (document.getElementById("reasonOther").checked) {
-                return document.getElementById("reasonOtherText").value.trim();
-            }
-            return "";
+            return document.getElementById("reasonOther").checked
+                ? document.getElementById("reasonOtherText").value.trim()
+                : "";
         }
 
         function showLoader() { document.getElementById("loaderOverlay").style.display = "flex"; }
         function hideLoader() { document.getElementById("loaderOverlay").style.display = "none"; }
+        function setSubmitEnabled(enabled) {
+            const btn = document.getElementById("submitBtn");
+            btn.disabled = !enabled;
+        }
 
-        function submitFeedback() {
-            let opinion = document.getElementById('comment').value.trim();
-            if (!q1Rating || !q2Rating) return alert("Please answer both rating questions.");
-            if (!contactId) return alert("Cannot submit feedback. Contact ID is missing.");
-            if (!opinion) opinion = "No comments added by customer";
+        async function submitFeedback() {
+            const mustAnswerMsg = t("mustAnswer");
+            const missingEntityMsg = t("missingEntity");
+            let opinion = document.getElementById('comment').value.trim() || "No comments added by customer";
+
+            if (!q1Rating || !q2Rating) { alert(mustAnswerMsg); return; }
+            if (!submitKey || !submitId) { alert(missingEntityMsg); return; }
 
             const payload = {
-                ContactId: contactId,   // ✅ use ContactId
                 ServiceSatisfaction: q1Rating,
                 StaffEfficiency: q2Rating,
                 Reasons: getReasons(),
                 SpecifyOther: getSpecifyOther(),
                 Opinion: opinion
             };
+            // Dynamically add ContactId or AccountId
+            payload[submitKey] = submitId;
 
-            showLoader();
-            fetch(`${domain}/customers/visitor-feedback`, {
-                method: "POST",
-                headers: {
-                    "Authorization": `Bearer ${token}`,
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify(payload)
-            })
-                .then(res => res.json())
-                .then(r => {
-                    hideLoader();
-                    if (r.Status?.toLowerCase() === "success") {
-                        document.getElementById("formSection").style.display = "none";
-                        document.getElementById("thankYouSection").style.display = "block";
-                    } else if (r.Message?.toLowerCase().includes("already submitted")) {
-                        document.getElementById("formSection").style.display = "none";
-                        document.getElementById("errorSection").style.display = "block";
-                    } else {
-                        alert("❌ Error: " + (r.Message || "Unknown error"));
-                    }
-                })
-                .catch(err => { hideLoader(); alert("❌ Could not submit feedback."); console.error(err); });
+            try {
+                setSubmitEnabled(false);
+                showLoader();
+                const res = await fetch(`${domain}/customers/visitor-feedback`, {
+                    method: "POST",
+                    headers: {
+                        "Authorization": `Bearer ${token}`,
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify(payload)
+                });
+                const r = await res.json();
+                hideLoader();
+                setSubmitEnabled(true);
+
+                const status = (r.Status || "").toLowerCase();
+                const msg = (r.Message || "").toLowerCase();
+
+                if (status === "success") {
+                    document.getElementById("formSection").style.display = "none";
+                    document.getElementById("thankYouSection").style.display = "block";
+                    // 🎉 confetti
+                    confetti({ particleCount: 120, spread: 70, origin: { y: 0.6 } });
+                } else if (msg.includes("already submitted")) {
+                    document.getElementById("formSection").style.display = "none";
+                    document.getElementById("errorSection").style.display = "block";
+                } else {
+                    alert("❌ Error: " + (r.Message || "Unknown error"));
+                }
+            } catch (err) {
+                hideLoader();
+                setSubmitEnabled(true);
+                console.error(err);
+                alert("❌ Could not submit feedback.");
+            }
         }
 
-        // 🔹 Load contact info
-        const urlParams = new URLSearchParams(window.location.search);
-        const contactIdParam = urlParams.get("contactId");
+        // ====== Load by Visitor Number (new API) ======
+        function readVisitorNumber() {
+            const p = new URLSearchParams(window.location.search);
+            // Accept a few aliases just in case
+            return p.get("visitorNumber") || p.get("v") || p.get("visitor") || p.get("ticket");
+        }
 
-        showLoader();
-        fetch(`${domain}/customers/by-contact/${contactIdParam}`, {
-            headers: { "Authorization": `Bearer ${token}` }
-        })
-            .then(res => res.json())
-            .then(r => {
+        async function loadVisitor() {
+            const visitorNumber = readVisitorNumber();
+            if (!visitorNumber) {
+                document.getElementById("ticketNumber").innerText = "Visitor: (Missing)";
+                document.getElementById("userName").innerText = "(Unknown)";
+                return;
+            }
+
+            try {
+                showLoader();
+                const res = await fetch(`${domain}/customers/by-visitor-number/${encodeURIComponent(visitorNumber)}`, {
+                    headers: { "Authorization": `Bearer ${token}` }
+                });
+                const r = await res.json();
                 hideLoader();
-                if (r.Status?.toLowerCase() === "success") {
-                    const user = r.Data;
-                    contactId = user.ContactId;   // ✅ store ContactId
-                    document.getElementById("ticketNumber").innerText = `Contact ID: ${user.ContactId}`;
-                    document.getElementById("userName").innerText = user.FullName || "(No Name)";
 
-                    if (r.Message?.toLowerCase().includes("already submitted")) {
-                        document.getElementById("formSection").style.display = "none";
-                        document.getElementById("errorSection").style.display = "block";
+                if ((r.Status || "").toLowerCase() === "success" && r.Data) {
+                    const d = r.Data;
+                    visitorId = d.VisitorId || null;
+                    entityType = d.EntityType || null;
+
+                    // Display visitor number prominently
+                    let phoneLabel = entityType === "Account" ? "Rep Phone" : "Mobile";
+                    let phoneValue = entityType === "Account" ? (d.RepresentativePhone || "(No Number)")
+                        : (d.MobilePhone || "(No Number)");
+
+                    document.getElementById("ticketNumber").innerText = `Visitor No: ${d.VisitorNumber} • ${phoneLabel}: ${phoneValue}`;
+
+                    if (entityType === "Contact") {
+                        submitKey = "ContactId";
+                        submitId = d.ContactId;
+                        document.getElementById("userName").innerText = d.FullName || "(No Name)";
+                    } else if (entityType === "Account") {
+                        submitKey = "AccountId";
+                        submitId = d.AccountId;
+                        document.getElementById("userName").innerText = d.Name || "(No Name)";
+                    } else {
+                        document.getElementById("userName").innerText = "(Unknown)";
                     }
+
+                    // Enable submit once entity is resolved
+                    setSubmitEnabled(!!submitKey && !!submitId);
+
                 } else {
-                    document.getElementById("ticketNumber").innerText = "Contact: (Not Found)";
+                    document.getElementById("ticketNumber").innerText = "Visitor: (Not Found)";
                     document.getElementById("userName").innerText = "(Unknown)";
                 }
-            })
-            .catch(err => { hideLoader(); console.error("Load error:", err); });
+            } catch (err) {
+                hideLoader();
+                console.error("Load error:", err);
+                document.getElementById("ticketNumber").innerText = "Visitor: (Error)";
+                document.getElementById("userName").innerText = "(Unknown)";
+            }
+        }
+
+        // Init
+        loadVisitor();
     </script>
 </body>
 </html>

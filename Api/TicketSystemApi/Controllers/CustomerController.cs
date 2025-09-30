@@ -143,56 +143,6 @@ namespace TicketSystemApi.Controllers
             }
         }
 
-        [HttpGet]
-        [Route("by-contact/{contactId}")]
-        public IHttpActionResult GetCustomerByContact(Guid contactId)
-        {
-            var authHeader = Request.Headers.Authorization;
-            string expectedToken = ConfigurationManager.AppSettings["ApiBearerToken"];
-
-            if (authHeader == null || authHeader.Scheme != "Bearer" || authHeader.Parameter != expectedToken)
-                return Content(HttpStatusCode.Unauthorized,
-                    ApiResponse<object>.Error("Unauthorized - Invalid bearer token"));
-
-            if (contactId == Guid.Empty)
-                return Content(HttpStatusCode.BadRequest,
-                    ApiResponse<object>.Error("ContactId is required."));
-
-            try
-            {
-                var service = _crmService.GetService();
-
-                // 🔍 Retrieve Contact by ID
-                var contact = service.Retrieve("contact", contactId,
-                    new ColumnSet("contactid", "firstname", "lastname", "fullname",
-                                  "emailaddress1", "mobilephone", "statuscode", "createdon"));
-
-                if (contact == null)
-                    return Content(HttpStatusCode.NotFound,
-                        ApiResponse<object>.Error($"No contact found for id: {contactId}"));
-
-                return Ok(ApiResponse<object>.Success(new
-                {
-                    ContactId = contact.Id,
-                    FirstName = contact.GetAttributeValue<string>("firstname"),
-                    LastName = contact.GetAttributeValue<string>("lastname"),
-                    FullName = contact.GetAttributeValue<string>("fullname"),
-                    Email = contact.GetAttributeValue<string>("emailaddress1"),
-                    MobilePhone = contact.GetAttributeValue<string>("mobilephone"),
-                    Status = contact.FormattedValues.Contains("statuscode")
-                                ? contact.FormattedValues["statuscode"]
-                                : null,
-                    CreatedOn = contact.GetAttributeValue<DateTime?>("createdon")
-                }, "Contact retrieved successfully"));
-            }
-            catch (Exception ex)
-            {
-                return Content(HttpStatusCode.InternalServerError,
-                    ApiResponse<object>.Error($"CRM error: {ex.Message}"));
-            }
-        }
-
-
         [HttpPost]
         [Route("submit-feedback")]
         public IHttpActionResult SubmitCustomerFeedback([FromBody] CustomerFeedbackModel model)
@@ -272,81 +222,186 @@ namespace TicketSystemApi.Controllers
             string expectedToken = ConfigurationManager.AppSettings["ApiBearerToken"];
 
             if (authHeader == null || authHeader.Scheme != "Bearer" || authHeader.Parameter != expectedToken)
-                return Content(HttpStatusCode.Unauthorized,
-                    ApiResponse<object>.Error("Unauthorized - Invalid bearer token"));
+                return Content(HttpStatusCode.Unauthorized, ApiResponse<object>.Error("Unauthorized - Invalid bearer token"));
 
-            if (model == null || string.IsNullOrWhiteSpace(model.ContactId))
-                return Content(HttpStatusCode.BadRequest,
-                    ApiResponse<object>.Error("ContactId is required."));
+            if (model == null || (string.IsNullOrWhiteSpace(model.ContactId) && string.IsNullOrWhiteSpace(model.AccountId)))
+                return Content(HttpStatusCode.BadRequest, ApiResponse<object>.Error("Either ContactId or AccountId is required."));
 
             try
             {
                 var service = _crmService.GetService();
-                Guid contactGuid = new Guid(model.ContactId);
+                var feedback = new Entity("new_satisfactionsurveysms");
+                string linkedVia = "";
 
-                // 🔍 Check if feedback already exists for this contact
-                var existingQuery = new QueryExpression("new_satisfactionsurveysms")
+                // 🔹 Case 1: Contact feedback
+                if (!string.IsNullOrWhiteSpace(model.ContactId))
                 {
-                    ColumnSet = new ColumnSet("new_satisfactionsurveysmsid"),
-                    Criteria =
-            {
-                Conditions =
+                    Guid contactId = new Guid(model.ContactId);
+
+                    // Prevent duplicates
+                    var existingQuery = new QueryExpression("new_satisfactionsurveysms")
+                    {
+                        ColumnSet = new ColumnSet("new_satisfactionsurveysmsid"),
+                        Criteria =
                 {
-                    new ConditionExpression("new_satisfactionsurveycontact", ConditionOperator.Equal, contactGuid)
+                    Conditions = { new ConditionExpression("new_satisfactionsurveycontact", ConditionOperator.Equal, contactId) }
                 }
-            }
-                };
+                    };
+                    if (service.RetrieveMultiple(existingQuery).Entities.Any())
+                        return Content(HttpStatusCode.Conflict, ApiResponse<object>.Error("Feedback already submitted for this contact."));
 
-                var existingFeedback = service.RetrieveMultiple(existingQuery);
-                if (existingFeedback.Entities.Any())
+                    feedback["new_satisfactionsurveycontact"] = new EntityReference("contact", contactId);
+                    linkedVia = "Contact";
+                }
+                // 🔹 Case 2: Account feedback → copy rep phone into feedback
+                else if (!string.IsNullOrWhiteSpace(model.AccountId))
                 {
-                    return Content(HttpStatusCode.Conflict,
-                        ApiResponse<object>.Error("Visitor feedback already submitted for this contact."));
+                    Guid accountId = new Guid(model.AccountId);
+
+                    var account = service.Retrieve("account", accountId,
+                        new ColumnSet("name", "new_companyrepresentativephonenumber", "new_crnumber", "emailaddress1"));
+
+                    if (account == null)
+                        return Content(HttpStatusCode.NotFound, ApiResponse<object>.Error($"Account {accountId} not found."));
+
+                    string repPhone = account.GetAttributeValue<string>("new_companyrepresentativephonenumber");
+                    string crNumber = account.GetAttributeValue<string>("new_crnumber");
+                    string accName = account.GetAttributeValue<string>("name");
+
+                    // Store these details in text fields on feedback (adjust to your schema)
+                    feedback["new_name"] = accName;
+                    feedback["new_youropinionmatterstouspleaseshareyourcom"] =
+                        $"Representative Phone: {repPhone}, CR Number: {crNumber}";
+
+                    linkedVia = "Account";
                 }
 
-                // ✅ Create new feedback record
-                var feedback = new Entity("new_satisfactionsurveysms")
-                {
-                    ["new_satisfactionsurveycontact"] = new EntityReference("contact", contactGuid)
-                };
-
-                // Satisfaction with service (OptionSet 1–5)
+                // 🔹 Common fields
                 if (model.ServiceSatisfaction >= 1 && model.ServiceSatisfaction <= 5)
-                    feedback["new_howsatisfiedareyouwiththeserviceprovideda"] =
-                        new OptionSetValue(model.ServiceSatisfaction);
+                    feedback["new_howsatisfiedareyouwiththeserviceprovideda"] = new OptionSetValue(model.ServiceSatisfaction);
 
-                // Staff efficiency (OptionSet 1–5)
                 if (model.StaffEfficiency >= 1 && model.StaffEfficiency <= 5)
-                    feedback["new_howsatisfiedareyouwiththeefficiencyofthes"] =
-                        new OptionSetValue(model.StaffEfficiency);
+                    feedback["new_howsatisfiedareyouwiththeefficiencyofthes"] = new OptionSetValue(model.StaffEfficiency);
 
-                // Reasons (MultiSelect OptionSet)
                 if (model.Reasons != null && model.Reasons.Any())
-                {
                     feedback["new_helpusbetterunderstandwhyyouchosetovisitt"] =
-                        new OptionSetValueCollection(model.Reasons.Select(x => new OptionSetValue(x)).ToList());
-                }
+                        new OptionSetValueCollection(model.Reasons.Select(r => new OptionSetValue(r)).ToList());
 
-                // Specify other (Single Line of Text → mapped to "new_name")
                 if (!string.IsNullOrWhiteSpace(model.SpecifyOther))
-                    feedback["new_name"] = model.SpecifyOther.Trim();
+                    feedback["new_name"] = (feedback.Contains("new_name") ? feedback["new_name"] + " | " : "") + model.SpecifyOther.Trim();
 
-                // Opinion (Multiple Lines of Text)
                 if (!string.IsNullOrWhiteSpace(model.Opinion))
-                    feedback["new_youropinionmatterstouspleaseshareyourcom"] = model.Opinion.Trim();
+                    feedback["new_youropinionmatterstouspleaseshareyourcom"] =
+                        (feedback.Contains("new_youropinionmatterstouspleaseshareyourcom")
+                            ? feedback["new_youropinionmatterstouspleaseshareyourcom"] + " | " + model.Opinion.Trim()
+                            : model.Opinion.Trim());
 
                 var feedbackId = service.Create(feedback);
 
                 return Ok(ApiResponse<object>.Success(new
                 {
-                    FeedbackId = feedbackId
+                    FeedbackId = feedbackId,
+                    LinkedVia = linkedVia
                 }, "Visitor feedback submitted successfully"));
             }
             catch (Exception ex)
             {
-                return Content(HttpStatusCode.InternalServerError,
-                    ApiResponse<object>.Error($"CRM error: {ex.Message}"));
+                return Content(HttpStatusCode.InternalServerError, ApiResponse<object>.Error($"CRM error: {ex.Message}"));
+            }
+        }
+
+        [HttpGet]
+        [Route("by-visitor-number/{visitorNumber}")]
+        public IHttpActionResult GetCustomerByVisitorNumber(string visitorNumber)
+        {
+            var authHeader = Request.Headers.Authorization;
+            string expectedToken = ConfigurationManager.AppSettings["ApiBearerToken"];
+
+            if (authHeader == null || authHeader.Scheme != "Bearer" || authHeader.Parameter != expectedToken)
+                return Content(HttpStatusCode.Unauthorized, ApiResponse<object>.Error("Unauthorized - Invalid bearer token"));
+
+            if (string.IsNullOrWhiteSpace(visitorNumber))
+                return Content(HttpStatusCode.BadRequest, ApiResponse<object>.Error("Visitor number is required."));
+
+            try
+            {
+                var service = _crmService.GetService();
+
+                // 🔹 Query visitor by new_visitornumber
+                var query = new QueryExpression("new_visitor")
+                {
+                    ColumnSet = new ColumnSet("new_visitorid", "new_visitornumber", "new_contactname", "new_companyname"),
+                    Criteria = new FilterExpression
+                    {
+                        Conditions =
+                {
+                    new ConditionExpression("new_visitornumber", ConditionOperator.Equal, visitorNumber)
+                }
+                    }
+                };
+
+                var visitors = service.RetrieveMultiple(query);
+
+                if (visitors.Entities.Count == 0)
+                    return Content(HttpStatusCode.NotFound, ApiResponse<object>.Error($"No visitor found with number: {visitorNumber}"));
+
+                var visitor = visitors.Entities.First();
+                var visitorId = visitor.Id;
+
+                var contactRef = visitor.GetAttributeValue<EntityReference>("new_contactname");
+                var accountRef = visitor.GetAttributeValue<EntityReference>("new_companyname");
+
+                if (contactRef != null)
+                {
+                    var contact = service.Retrieve("contact", contactRef.Id,
+                        new ColumnSet("contactid", "fullname", "firstname", "lastname",
+                                      "emailaddress1", "mobilephone", "statuscode", "createdon"));
+
+                    return Ok(ApiResponse<object>.Success(new
+                    {
+                        VisitorNumber = visitorNumber,
+                        VisitorId = visitorId,
+                        EntityType = "Contact",
+                        ContactId = contact.Id,
+                        FullName = contact.GetAttributeValue<string>("fullname"),
+                        FirstName = contact.GetAttributeValue<string>("firstname"),
+                        LastName = contact.GetAttributeValue<string>("lastname"),
+                        Email = contact.GetAttributeValue<string>("emailaddress1"),
+                        MobilePhone = contact.GetAttributeValue<string>("mobilephone"),
+                        Status = contact.FormattedValues.ContainsKey("statuscode") ? contact.FormattedValues["statuscode"] : null,
+                        CreatedOn = contact.GetAttributeValue<DateTime?>("createdon")
+                    }, "Contact retrieved successfully"));
+                }
+
+                if (accountRef != null)
+                {
+                    var account = service.Retrieve("account", accountRef.Id,
+                        new ColumnSet("accountid", "name", "emailaddress1",
+                                      "new_companyrepresentativephonenumber",
+                                      "new_crnumber", "statuscode", "createdon"));
+
+                    return Ok(ApiResponse<object>.Success(new
+                    {
+                        VisitorNumber = visitorNumber,
+                        VisitorId = visitorId,
+                        EntityType = "Account",
+                        AccountId = account.Id,
+                        Name = account.GetAttributeValue<string>("name"),
+                        Email = account.GetAttributeValue<string>("emailaddress1"),
+                        RepresentativePhone = account.GetAttributeValue<string>("new_companyrepresentativephonenumber"),
+                        CRNumber = account.GetAttributeValue<string>("new_crnumber"),
+                        Status = account.FormattedValues.ContainsKey("statuscode") ? account.FormattedValues["statuscode"] : null,
+                        CreatedOn = account.GetAttributeValue<DateTime?>("createdon")
+                    }, "Account retrieved successfully"));
+                }
+
+                return Content(HttpStatusCode.NotFound, ApiResponse<object>.Error("Visitor has no associated Contact or Account."));
+            }
+            catch (Exception ex)
+            {
+                return Content(HttpStatusCode.InternalServerError, ApiResponse<object>.Error($"CRM error: {ex.Message}"));
             }
         }
     }
 }
+
