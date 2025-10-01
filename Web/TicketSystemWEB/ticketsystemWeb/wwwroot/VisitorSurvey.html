@@ -506,7 +506,7 @@
     function getQueryKeys() {
         const p = new URLSearchParams(window.location.search);
         const visitorId = p.get("visitorGuid") || p.get("v");       // GUID
-        const visitorNumber = p.get("visitorID") || p.get("visitorNumber");  // human number/code
+        const visitorNumber = p.get("visitorId") || p.get("visitorNumber") || p.get("visitorID");  // human number/code
         return { visitorId, visitorNumber };
     }
 
