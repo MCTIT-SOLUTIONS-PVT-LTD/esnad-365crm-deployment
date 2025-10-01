@@ -447,7 +447,6 @@
         })
         .then(res => res.json())
         .then(response => {
-        .then(response => {
             hideLoader();
             if (response.Status?.toLowerCase() === "success") {
                 const user = response.Data;
