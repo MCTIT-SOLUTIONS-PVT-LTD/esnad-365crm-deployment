@@ -2,5 +2,6 @@
 <Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <ActiveDebugProfile>https</ActiveDebugProfile>
+    <NameOfLastUsedPublishProfile>C:\MCT Projects\Esnad\dharitthaker04\dharitthaker04\esnad-365crm-deployment-dharit\.github\workflows\build-dev-api.yml</NameOfLastUsedPublishProfile>
   </PropertyGroup>
 </Project>
