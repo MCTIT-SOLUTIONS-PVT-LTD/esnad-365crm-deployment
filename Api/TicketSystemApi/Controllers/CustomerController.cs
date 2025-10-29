@@ -45,12 +45,12 @@ namespace TicketSystemApi.Controllers
                 {
                     ColumnSet = new ColumnSet("ticketnumber", "customerid", "incidentid"),
                     Criteria =
-            {
-                Conditions =
                 {
-                    new ConditionExpression("ticketnumber", ConditionOperator.Equal, ticketNumber)
+                    Conditions =
+                    {
+                        new ConditionExpression("ticketnumber", ConditionOperator.Equal, ticketNumber)
+                    }
                 }
-            }
                 };
 
                 var result = service.RetrieveMultiple(query);
@@ -194,12 +194,21 @@ namespace TicketSystemApi.Controllers
 
                 var commentValue = string.IsNullOrWhiteSpace(model.Comment) ? "No comments added by customer" : model.Comment.Trim();
 
+                // 🔍 Retrieve Case to find linked customer 29-10-25
+                var caseEntity = service.Retrieve("incident", caseGuid, new ColumnSet("customerid"));
+                if (!caseEntity.Contains("customerid"))
+                    return Ok(ApiResponse<object>.Error("No customer linked to this case."));
+
+                var customerRef = (EntityReference)caseEntity["customerid"];
+
                 var feedback = new Entity("new_customersatisfactionscore");
                 feedback["new_customersatisfactionrating"] = new OptionSetValue(model.Rating);
                 feedback["new_comment"] = commentValue;
                 feedback["new_customersatisfactionscore"] = commentValue;  // ⬅️ Additional field to store same comment
                 feedback["new_csatcase"] = new EntityReference("incident", caseGuid);
                 feedback["new_wasthetimetakentoprocesstheticketappropri"] = (model.TimeAppropriate == 1);
+                // 🧩 Add Customer Lookup — can be Contact or Account
+                feedback["new_customer"] = new EntityReference(customerRef.LogicalName, customerRef.Id);//Added customer details 29-10-25
 
                 var feedbackId = service.Create(feedback);
 
@@ -277,6 +286,50 @@ namespace TicketSystemApi.Controllers
 
                     linkedVia = "Account";
                 }
+
+                // Validate and link Visitor (mandatory) Date - 29-10-25
+                if (string.IsNullOrWhiteSpace(model.VisitorId))
+                {
+                    return Content(HttpStatusCode.BadRequest,
+                        ApiResponse<object>.Error("VisitorId is required."));
+                }
+
+                Guid visitorId;
+                try
+                {
+                    visitorId = new Guid(model.VisitorId);
+                }
+                catch
+                {
+                    return Content(HttpStatusCode.BadRequest,
+                        ApiResponse<object>.Error("Invalid VisitorId format."));
+                }
+
+                // ✅ Link Visitor lookup field
+                feedback["new_satisfactionsurveyvisitor"] = new EntityReference("new_visitor", visitorId);
+
+                //// 🔸 Validate and link TicketId  Date - 29-10-25
+                //if (string.IsNullOrWhiteSpace(model.TicketId))
+                //{
+                //    return Content(HttpStatusCode.BadRequest,
+                //        ApiResponse<object>.Error("TicketId is required."));
+                //}
+
+                //Guid TicketId;
+                //try
+                //{
+                //    TicketId = new Guid(model.TicketId);
+                //}
+                //catch
+                //{
+                //    return Content(HttpStatusCode.BadRequest,
+                //        ApiResponse<object>.Error("Invalid VisitorId format."));
+                //}
+
+                //// ✅ Link Ticket lookup field
+                //feedback["new_satisfactionsurveyticket"] = new EntityReference("incident", TicketId);
+                //------Date - 29-10-25  Vrushti
+
 
                 // 🔹 Common fields
                 if (model.ServiceSatisfaction >= 1 && model.ServiceSatisfaction <= 5)
