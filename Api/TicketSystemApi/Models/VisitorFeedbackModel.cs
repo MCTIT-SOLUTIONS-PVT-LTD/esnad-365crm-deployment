@@ -7,8 +7,8 @@ namespace TicketSystemApi.Models
 {
     public class VisitorFeedbackModel
     {
-        public string VisitorId { get; set; }
-        public string TicketId { get; set; }
+        public string VisitorId { get; set; } // Added VisitorID
+        public string TicketId { get; set; } // Added TicketId
         public string ContactId { get; set; }   // optional
         public string AccountId { get; set; }
         public int ServiceSatisfaction { get; set; }
