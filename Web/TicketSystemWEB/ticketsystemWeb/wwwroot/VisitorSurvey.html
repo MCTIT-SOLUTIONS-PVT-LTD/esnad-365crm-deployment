@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ar">
 <head>
     <meta charset="UTF-8">
@@ -223,7 +223,7 @@
 
         <div class="text-center mb-3">
             <h4 class="mb-2">Your Feedback</h4>
-            <div class="ticket-number" id="ticketNumber">Loading ticket...</div>
+            <div class="ticket-number" id="ticketNumber">Loading Visitor...</div>
         </div>
 
         <!-- Q1 -->
@@ -283,7 +283,7 @@
                 <img src="https://cdn-icons-png.flaticon.com/512/921/921347.png" alt="User Avatar">
                 <div class="user-name" id="userName">Loading user...</div>
             </div>
-            <button class="btn btn-submit" onclick="submitFeedback()">Submit</button>
+            <button id="submitBtn" class="btn btn-submit" onclick="submitFeedback()">Submit</button>
         </div>
     </div>
 
@@ -305,200 +305,294 @@
         </div>
     </div>
 
-    <script>
-        const domain = window.ENV?.DOMAIN || "__DOMAIN__";
-        const token = window.ENV?.TOKEN || "__API_TOKEN__";
 
-        let q1Rating = 0, q2Rating = 0, ticketId = null;
-        let currentLang = "ar";
+</body>
 
-        // CRM OptionSet numeric values for Reasons
-        const reasonValues = {
-            reason1: 1,
-            reason2: 2,
-            reason3: 3,
-            reasonOther: 4
-        };
+<script>
+    // ====== Config ======
+    const domain = window.ENV?.DOMAIN || "__DOMAIN__";
+    const token = window.ENV?.TOKEN || "__API_TOKEN__";
 
-        const translations = {
-            en: {
-                title: "Your Feedback",
-                q1: "How satisfied are you with the service provided at the center?",
-                q2: "How satisfied are you with the efficiency of the staff who assisted you?",
-                q3: "Help us better understand why you chose to visit the service center instead of using other communication channels:",
-                q4: "Your opinion matters to us — please share your comments and suggestions:",
-                reasons: [
-                    "Ineffectiveness of digital channels",
-                    "Insufficient information available in the Help Center",
-                    "Insufficient information available on the Ta’adeen platform",
-                    "Other"
-                ],
-                otherPlaceholder: "Please specify...",
-                submit: "Submit",
-                thankYouTitle: "Thank You!",
-                thankYouText: "Your feedback has been submitted successfully.",
-                alreadySubmittedTitle: "Feedback Already Submitted",
-                alreadySubmittedText: "You have already provided feedback for this ticket. Thank you!"
-            },
-            ar: {
-                title: "ملاحظاتك",
-                q1: "ما مدى رضاك عن الخدمة المقدمة عبر المركز؟ ",
-                q2: "ما مدى رضاك عن كفاءة الموظف الذي قام بخدمتك ؟",
-                q3: "ساعدنا أكثر بمعرفة سبب اختيارك زيارة مركز الخدمة بدلاً من قنوات التواصل الاخرى ؟ ",
-                q4: "رأيك يهمنا شاركنا ملاحظاتك ومقترحاتك:",
-                reasons: [
-                    "عدم فاعلية القنوات الرقمية",
-                    "عدم وجود معلومات كافية في مركز المساعدة",
-                    "عدم وجود معلومات كافية في منصة تعدين",
-                    "خيار آخر"
-                ],
-                otherPlaceholder: "الرجاء التحديد...",
-                submit: "إرسال",
-                thankYouTitle: "شكرًا لك!",
-                thankYouText: "تم إرسال ملاحظاتك بنجاح.",
-                alreadySubmittedTitle: "تم إرسال الملاحظات مسبقًا",
-                alreadySubmittedText: "لقد قدمت ملاحظاتك بالفعل لهذه التذكرة. شكرًا لك!"
-            }
-        };
+    // ====== State ======
+    let q1Rating = 0, q2Rating = 0;
+    let currentLang = "ar";
 
-        function setLanguage(lang) {
-            currentLang = lang;
-            const t = translations[lang] || translations.en;
+    // Which ID to send on POST
+    let submitKey = null;   // "ContactId" | "AccountId"
+    let submitId = null;   // GUID value
+    let entityType = null;  // "Contact" | "Account"
 
-            document.querySelector("#formSection h4").innerText = t.title;
-            document.getElementById("q1Label").innerText = t.q1;
-            document.getElementById("q2Label").innerText = t.q2;
-            document.getElementById("q3Label").innerText = t.q3;
-            document.getElementById("q4Label").innerText = t.q4;
+    const reasonValues = { reason1: 1, reason2: 2, reason3: 3, reasonOther: 4 };
 
-            document.querySelector("label[for='reason1']").innerText = t.reasons[0];
-            document.querySelector("label[for='reason2']").innerText = t.reasons[1];
-            document.querySelector("label[for='reason3']").innerText = t.reasons[2];
-            document.querySelector("label[for='reasonOther']").innerText = t.reasons[3];
-
-            document.getElementById("reasonOtherText").placeholder = t.otherPlaceholder;
-            document.querySelector(".btn-submit").innerText = t.submit;
-
-            // update ThankYou & Error sections
-            document.querySelector("#thankYouSection h4").innerText = t.thankYouTitle;
-            document.querySelector("#thankYouSection p").innerText = t.thankYouText;
-            document.querySelector("#errorSection h4").innerText = t.alreadySubmittedTitle;
-            document.querySelector("#errorSection p").innerText = t.alreadySubmittedText;
-
-            document.body.dir = lang === "ar" ? "rtl" : "ltr";
-            document.querySelector(".feedback-card").style.textAlign = lang === "ar" ? "right" : "left";
+    // i18n
+    const translations = {
+        en: {
+            title: "Your Feedback",
+            q1: "How satisfied are you with the service provided at the center?",
+            q2: "How satisfied are you with the efficiency of the staff who assisted you?",
+            q3: "Help us better understand why you chose to visit the service center instead of using other communication channels:",
+            q4: "Your opinion matters to us — please share your comments and suggestions:",
+            reasons: [
+                "Ineffectiveness of digital channels",
+                "Insufficient information available in the Help Center",
+                "Insufficient information available on the Ta’adeen platform",
+                "Other"
+            ],
+            otherPlaceholder: "Please specify...",
+            submit: "Submit",
+            thankYouTitle: "Thank You!",
+            thankYouText: "Your feedback has been submitted successfully.",
+            alreadySubmittedTitle: "Feedback Already Submitted",
+            alreadySubmittedText: "You have already provided feedback for this visitor. Thank you!",
+            mustAnswer: "Please answer both rating questions.",
+            missingEntity: "Cannot submit feedback. Visitor details not loaded yet.",
+            phoneLabelContact: "Mobile",
+            phoneLabelAccount: "Representative Phone"
+        },
+        ar: {
+            title: "ملاحظاتك",
+            q1: "ما مدى رضاك عن الخدمة المقدمة عبر المركز؟ ",
+            q2: "ما مدى رضاك عن كفاءة الموظف الذي قام بخدمتك ؟",
+            q3: "ساعدنا أكثر بمعرفة سبب اختيارك زيارة مركز الخدمة بدلاً من قنوات التواصل الاخرى ؟ ",
+            q4: "رأيك يهمنا شاركنا ملاحظاتك ومقترحاتك:",
+            reasons: [
+                "عدم فاعلية القنوات الرقمية",
+                "عدم وجود معلومات كافية في مركز المساعدة",
+                "عدم وجود معلومات كافية في منصة تعدين",
+                "خيار آخر"
+            ],
+            otherPlaceholder: "الرجاء التحديد...",
+            submit: "إرسال",
+            thankYouTitle: "شكرًا لك!",
+            thankYouText: "تم إرسال ملاحظاتك بنجاح.",
+            alreadySubmittedTitle: "تم إرسال الملاحظات مسبقًا",
+            alreadySubmittedText: "لقد قدمت ملاحظاتك بالفعل لهذا الزائر. شكرًا لك!",
+            mustAnswer: "يرجى الإجابة على سؤالَي التقييم.",
+            missingEntity: "لا يمكن الإرسال قبل تحميل بيانات الزائر.",
+            phoneLabelContact: "الجوال",
+            phoneLabelAccount: "هاتف ممثل الشركة"
         }
+    };
 
-        document.getElementById("languageSwitcher").addEventListener("change", e => setLanguage(e.target.value));
-        setLanguage("ar");
+    function t(key) { return (translations[currentLang] || translations.en)[key]; }
 
-        // ⭐ Star ratings
-        document.querySelectorAll('.star').forEach(star => {
-            star.addEventListener('click', () => {
-                const q = star.getAttribute('data-question');
-                const v = parseInt(star.getAttribute('data-value'));
-                if (q === "q1") q1Rating = v;
-                if (q === "q2") q2Rating = v;
-                document.querySelectorAll(`.star[data-question="${q}"]`)
-                    .forEach(s => s.classList.toggle('selected', parseInt(s.getAttribute('data-value')) <= v));
-            });
+    function setLanguage(lang) {
+        currentLang = lang;
+        const tx = translations[lang] || translations.en;
+
+        document.querySelector("#formSection h4").innerText = tx.title;
+        document.getElementById("q1Label").innerText = tx.q1;
+        document.getElementById("q2Label").innerText = tx.q2;
+        document.getElementById("q3Label").innerText = tx.q3;
+        document.getElementById("q4Label").innerText = tx.q4;
+
+        document.querySelector("label[for='reason1']").innerText = tx.reasons[0];
+        document.querySelector("label[for='reason2']").innerText = tx.reasons[1];
+        document.querySelector("label[for='reason3']").innerText = tx.reasons[2];
+        document.querySelector("label[for='reasonOther']").innerText = tx.reasons[3];
+
+        document.getElementById("reasonOtherText").placeholder = tx.otherPlaceholder;
+        document.querySelector(".btn-submit").innerText = tx.submit;
+
+        document.querySelector("#thankYouSection h4").innerText = tx.thankYouTitle;
+        document.querySelector("#thankYouSection p").innerText = tx.thankYouText;
+        document.querySelector("#errorSection h4").innerText = tx.alreadySubmittedTitle;
+        document.querySelector("#errorSection p").innerText = tx.alreadySubmittedText;
+
+        document.body.dir = lang === "ar" ? "rtl" : "ltr";
+        document.querySelector(".feedback-card").style.textAlign = lang === "ar" ? "right" : "left";
+    }
+    document.getElementById("languageSwitcher").addEventListener("change", e => setLanguage(e.target.value));
+    setLanguage("ar");
+
+    // ⭐ Star ratings
+    document.querySelectorAll('.star').forEach(star => {
+        star.addEventListener('click', () => {
+            const q = star.getAttribute('data-question');
+            const v = parseInt(star.getAttribute('data-value'));
+            if (q === "q1") q1Rating = v;
+            if (q === "q2") q2Rating = v;
+            document.querySelectorAll(`.star[data-question="${q}"]`)
+                .forEach(s => s.classList.toggle('selected', parseInt(s.getAttribute('data-value')) <= v));
         });
+    });
 
-        // Show/hide textarea for "Other"
-        document.getElementById("reasonOther").addEventListener("change", function () {
-            const otherText = document.getElementById("reasonOtherText");
-            otherText.style.display = this.checked ? "block" : "none";
-            if (!this.checked) otherText.value = "";
-        });
+    // "Other" toggle
+    document.getElementById("reasonOther").addEventListener("change", function () {
+        const otherText = document.getElementById("reasonOtherText");
+        otherText.style.display = this.checked ? "block" : "none";
+        if (!this.checked) otherText.value = "";
+    });
 
-        function getReasons() {
-            const reasons = [];
-            if (document.getElementById("reason1").checked) reasons.push(reasonValues.reason1);
-            if (document.getElementById("reason2").checked) reasons.push(reasonValues.reason2);
-            if (document.getElementById("reason3").checked) reasons.push(reasonValues.reason3);
-            if (document.getElementById("reasonOther").checked) reasons.push(reasonValues.reasonOther);
-            return reasons;
-        }
+    function getReasons() {
+        const res = [];
+        if (document.getElementById("reason1").checked) res.push(reasonValues.reason1);
+        if (document.getElementById("reason2").checked) res.push(reasonValues.reason2);
+        if (document.getElementById("reason3").checked) res.push(reasonValues.reason3);
+        if (document.getElementById("reasonOther").checked) res.push(reasonValues.reasonOther);
+        return res;
+    }
+    function getSpecifyOther() {
+        return document.getElementById("reasonOther").checked
+            ? document.getElementById("reasonOtherText").value.trim()
+            : "";
+    }
 
-        function getSpecifyOther() {
-            if (document.getElementById("reasonOther").checked) {
-                return document.getElementById("reasonOtherText").value.trim();
-            }
-            return "";
-        }
+    function showLoader() { document.getElementById("loaderOverlay").style.display = "flex"; }
+    function hideLoader() { document.getElementById("loaderOverlay").style.display = "none"; }
+    function setSubmitEnabled(enabled) { document.getElementById("submitBtn").disabled = !enabled; }
 
-        function showLoader() { document.getElementById("loaderOverlay").style.display = "flex"; }
-        function hideLoader() { document.getElementById("loaderOverlay").style.display = "none"; }
+    // ====== Submit ======
+    async function submitFeedback() {
+        const mustAnswerMsg = t("mustAnswer");
+        const missingEntityMsg = t("missingEntity");
 
-        function submitFeedback() {
-            let opinion = document.getElementById('comment').value.trim();
-            if (!q1Rating || !q2Rating) return alert("Please answer both rating questions.");
-            if (!contactId) return alert("Cannot submit feedback. Contact ID is missing.");
-            if (!opinion) opinion = "No comments added by customer";
+        let opinion = (document.getElementById('comment').value || "").trim();
+        if (!opinion) opinion = currentLang === "ar" ? "لا توجد ملاحظات مضافة من العميل" : "No comments added by customer";
 
-            const payload = {
-                ContactId: contactId,   // 🔹 changed
-                ServiceSatisfaction: q1Rating,
-                StaffEfficiency: q2Rating,
-                Reasons: getReasons(),
-                SpecifyOther: getSpecifyOther(),
-                Opinion: opinion
-            };
+        if (!q1Rating || !q2Rating) { alert(mustAnswerMsg); return; }
+        if (!submitKey || !submitId) { alert(missingEntityMsg); return; }
 
+        const payload = {
+            ServiceSatisfaction: q1Rating,
+            StaffEfficiency: q2Rating,
+            Reasons: getReasons(),
+            SpecifyOther: getSpecifyOther(),
+            Opinion: opinion
+        };
+        payload[submitKey] = submitId; // ContactId or AccountId
+
+        console.debug("[Feedback] POST payload:", payload);
+
+        try {
+            setSubmitEnabled(false);
             showLoader();
-            fetch(`${domain}/customers/visitor-feedback`, {
+            const res = await fetch(`${domain}/customers/visitor-feedback`, {
                 method: "POST",
                 headers: {
                     "Authorization": `Bearer ${token}`,
                     "Content-Type": "application/json"
                 },
                 body: JSON.stringify(payload)
-            })
-                .then(res => res.json())
-                .then(r => {
-                    hideLoader();
-                    if (r.Status?.toLowerCase() === "success") {
-                        document.getElementById("formSection").style.display = "none";
-                        document.getElementById("thankYouSection").style.display = "block";
-                    } else if (r.Message?.toLowerCase().includes("already submitted")) {
-                        document.getElementById("formSection").style.display = "none";
-                        document.getElementById("errorSection").style.display = "block";
-                    } else {
-                        alert("❌ Error: " + (r.Message || "Unknown error"));
-                    }
-                })
-                .catch(err => { hideLoader(); alert("❌ Could not submit feedback."); console.error(err); });
+            });
+            const r = await res.json();
+            console.debug("[Feedback] POST response:", r);
+            hideLoader();
+            setSubmitEnabled(true);
+
+            const status = (r.Status || "").toLowerCase();
+            const msg = (r.Message || "").toLowerCase();
+
+            if (status === "success") {
+                document.getElementById("formSection").style.display = "none";
+                document.getElementById("thankYouSection").style.display = "block";
+                confetti({ particleCount: 120, spread: 70, origin: { y: 0.6 } });
+            } else if (msg.includes("already submitted")) {
+                document.getElementById("formSection").style.display = "none";
+                document.getElementById("errorSection").style.display = "block";
+            } else {
+                alert("❌ Error: " + (r.Message || "Unknown error"));
+            }
+        } catch (err) {
+            hideLoader();
+            setSubmitEnabled(true);
+            console.error(err);
+            alert(currentLang === "ar" ? "تعذّر إرسال الملاحظات." : "Could not submit feedback.");
+        }
+    }
+    window.submitFeedback = submitFeedback; // keep onclick working
+
+    // ====== Load visitor (supports visitorId or visitorNumber) ======
+    function getQueryKeys() {
+        const p = new URLSearchParams(window.location.search);
+        const visitorId = p.get("visitorGuid") || p.get("v");       // GUID
+        const visitorNumber = p.get("visitorId") || p.get("visitorNumber") || p.get("visitorID");  // human number/code
+        return { visitorId, visitorNumber };
+    }
+
+    // Helper: normalize property names from API (handles different casings)
+    function pick(...candidates) {
+        for (const c of candidates) { if (c !== undefined && c !== null) return c; }
+        return undefined;
+    }
+
+    async function loadVisitor() {
+        const { visitorId, visitorNumber } = getQueryKeys();
+        let url = null;
+
+        if (visitorId) {
+            url = `${domain}/customers/by-visitor/${encodeURIComponent(visitorId)}`;
+        } else if (visitorNumber) {
+            url = `${domain}/customers/by-visitor-number/${encodeURIComponent(visitorNumber)}`;
+        } else {
+            document.getElementById("ticketNumber").innerText = "Visitor: (Missing)";
+            document.getElementById("userName").innerText = "(Unknown)";
+            setSubmitEnabled(false);
+            return;
         }
 
-        // 🔹 Load ticket info
-        const urlParams = new URLSearchParams(window.location.search);
-        const contactIdParam = urlParams.get("contactId");
+        try {
+            setSubmitEnabled(false);
+            showLoader();
+            const res = await fetch(url, { headers: { "Authorization": `Bearer ${token}` } });
+            const r = await res.json();
+            console.debug("[Visitor] GET response:", r);
+            hideLoader();
 
-        showLoader();
-        fetch(`${domain}/customers/by-contact/${contactIdParam}`, {
-            headers: { "Authorization": `Bearer ${token}` }
-        })
-            .then(res => res.json())
-            .then(r => {
-                hideLoader();
-                if (r.Status?.toLowerCase() === "success") {
-                    const user = r.Data;
-                    contactId = user.ContactId;   // 🔹 store ContactId
-                    document.getElementById("ticketNumber").innerText = `Contact ID: ${user.ContactId}`;
-                    document.getElementById("userName").innerText = user.FullName || "(No Name)";
+            if ((r.Status || "").toLowerCase() !== "success" || !r.Data) {
+                document.getElementById("ticketNumber").innerText = "Visitor: (Not Found)";
+                document.getElementById("userName").innerText = "(Unknown)";
+                return;
+            }
 
-                    if (r.Message?.toLowerCase().includes("already submitted")) {
-                        document.getElementById("formSection").style.display = "none";
-                        document.getElementById("errorSection").style.display = "block";
-                    }
-                } else {
-                    document.getElementById("ticketNumber").innerText = "Contact: (Not Found)";
-                    document.getElementById("userName").innerText = "(Unknown)";
-                }
-            })
-            .catch(err => { hideLoader(); console.error("Load error:", err); });
-    </script>
-    </script>
+            const d = r.Data;
+            entityType = d.EntityType || d.entityType || null;
 
-</body>
+            // Normalize IDs regardless of casing used by the API
+            const contactId = pick(d.ContactId, d.contactId, d.ContactID);
+            const accountId = pick(d.AccountId, d.accountId, d.AccountID);
+
+            // Normalize names/phones
+            const fullName = pick(d.FullName, d.fullName);
+            const firstName = pick(d.FirstName, d.firstName);
+            const lastName = pick(d.LastName, d.lastName);
+            const name = pick(d.Name, d.name);
+            const mobile = pick(d.MobilePhone, d.mobilePhone, d.Mobile);
+            const repPhone = pick(d.RepresentativePhone, d.representativePhone);
+            const visitorNo = pick(d.VisitorNumber, d.visitorNumber);
+
+            if (entityType === "Contact") {
+                submitKey = "ContactId";
+                submitId = contactId;
+                const displayName = fullName || `${firstName || ""} ${lastName || ""}`.trim() || "(No Name)";
+                document.getElementById("userName").innerText = displayName;
+                document.getElementById("ticketNumber").innerText =
+                    visitorNo || "(Visitor Not Found)";
+            } else if (entityType === "Account") {
+                submitKey = "AccountId";
+                submitId = accountId;
+                document.getElementById("userName").innerText = name || "(No Name)";
+                document.getElementById("ticketNumber").innerText =
+                    visitorNo || "(Visitor Not Found)";
+            } else {
+                // Unexpected response shape
+                submitKey = null; submitId = null;
+                document.getElementById("ticketNumber").innerText = "Visitor: (Unsupported type)";
+                document.getElementById("userName").innerText = "(Unknown)";
+            }
+
+            setSubmitEnabled(!!submitKey && !!submitId);
+        } catch (err) {
+            hideLoader();
+            console.error("Load error:", err);
+            document.getElementById("ticketNumber").innerText = "Visitor: (Error)";
+            document.getElementById("userName").innerText = "(Unknown)";
+            setSubmitEnabled(false);
+        }
+    }
+
+    // Init
+    loadVisitor();
+</script>
+
 </html>
