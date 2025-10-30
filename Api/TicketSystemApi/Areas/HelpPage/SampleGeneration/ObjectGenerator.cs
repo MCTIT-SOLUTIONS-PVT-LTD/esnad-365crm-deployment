@@ -13,7 +13,7 @@ namespace TicketSystemApi.Areas.HelpPage
     /// </summary>
     public class ObjectGenerator
     {
-        internal const int DefaultCollectionSize = 2;
+        private const int DefaultCollectionSize = 3;
         private readonly SimpleTypeObjectGenerator SimpleObjectGenerator = new SimpleTypeObjectGenerator();
 
         /// <summary>
