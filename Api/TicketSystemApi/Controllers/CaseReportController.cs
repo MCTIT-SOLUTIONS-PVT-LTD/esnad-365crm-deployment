@@ -38,7 +38,7 @@ namespace TicketSystemApi.Controllers
                 {
                     ColumnSet = new ColumnSet(
                         "ticketnumber", "createdon", "modifiedon", "statuscode", "prioritycode",
-                        "new_ticketclosuredate", "new_description", "new_ticketsubmissionchannel",
+                        "resolveby", "new_description", "new_ticketsubmissionchannel",//changed new_ticketclosuredate to resolveby
                         "new_businessunitid", "createdby", "modifiedby", "ownerid", "customerid",
                         "new_tickettype", "new_mainclassification", "new_subclassificationitem",
                         "new_isreopened", "new_reopendatetime",
@@ -214,7 +214,7 @@ namespace TicketSystemApi.Controllers
         {
             var resolvedStatusCodes = new HashSet<int> { 5, 6, 100000003, 100000007, 2000 };
 
-            if (incident.Contains("new_ticketclosuredate") && incident["new_ticketclosuredate"] is DateTime closure)
+            if (incident.Contains("resolveby") && incident["resolveby"] is DateTime closure)//changed new_ticketclosuredate to resolveby
                 return ConvertToKsaTime(closure);
 
             if (incident.Contains("statuscode") && incident["statuscode"] is OptionSetValue status &&
