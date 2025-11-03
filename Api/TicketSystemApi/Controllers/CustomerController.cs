@@ -288,47 +288,26 @@ namespace TicketSystemApi.Controllers
                 }
 
                 // Validate and link Visitor (mandatory) Date - 29-10-25
-                //if (string.IsNullOrWhiteSpace(model.VisitorId))
-                //{
-                //    return Content(HttpStatusCode.BadRequest,
-                //        ApiResponse<object>.Error("VisitorId is required."));
-                //}
+                if (string.IsNullOrWhiteSpace(model.VisitorId))
+                {
+                    return Content(HttpStatusCode.BadRequest,
+                        ApiResponse<object>.Error("VisitorId is required."));
+                }
 
-              /*  Guid visitorId;
+               Guid VisitorId;
                 try
                 {
-                    visitorId = new Guid(model.VisitorId);
+                    VisitorId = new Guid(model.VisitorId);
                 }
                 catch
                 {
                     return Content(HttpStatusCode.BadRequest,
                         ApiResponse<object>.Error("Invalid VisitorId format."));
-                }*/
+                }
 
                 // ✅ Link Visitor lookup field
-               // feedback["new_satisfactionsurveyvisitor"] = new EntityReference("new_visitor", visitorId);
+               feedback["new_satisfactionsurveyvisitor"] = new EntityReference("new_visitor", VisitorId);
 
-                //// 🔸 Validate and link TicketId  Date - 29-10-25
-                //if (string.IsNullOrWhiteSpace(model.TicketId))
-                //{
-                //    return Content(HttpStatusCode.BadRequest,
-                //        ApiResponse<object>.Error("TicketId is required."));
-                //}
-
-                //Guid TicketId;
-                //try
-                //{
-                //    TicketId = new Guid(model.TicketId);
-                //}
-                //catch
-                //{
-                //    return Content(HttpStatusCode.BadRequest,
-                //        ApiResponse<object>.Error("Invalid VisitorId format."));
-                //}
-
-                //// ✅ Link Ticket lookup field
-                //feedback["new_satisfactionsurveyticket"] = new EntityReference("incident", TicketId);
-                //------Date - 29-10-25  Vrushti
 
 
                 // 🔹 Common fields
