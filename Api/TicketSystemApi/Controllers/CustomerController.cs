@@ -288,13 +288,13 @@ namespace TicketSystemApi.Controllers
                 }
 
                 // Validate and link Visitor (mandatory) Date - 29-10-25
-                if (string.IsNullOrWhiteSpace(model.VisitorId))
-                {
-                    return Content(HttpStatusCode.BadRequest,
-                        ApiResponse<object>.Error("VisitorId is required."));
-                }
+                //if (string.IsNullOrWhiteSpace(model.VisitorId))
+                //{
+                //    return Content(HttpStatusCode.BadRequest,
+                //        ApiResponse<object>.Error("VisitorId is required."));
+                //}
 
-                Guid visitorId;
+              /*  Guid visitorId;
                 try
                 {
                     visitorId = new Guid(model.VisitorId);
@@ -303,10 +303,10 @@ namespace TicketSystemApi.Controllers
                 {
                     return Content(HttpStatusCode.BadRequest,
                         ApiResponse<object>.Error("Invalid VisitorId format."));
-                }
+                }*/
 
                 // ✅ Link Visitor lookup field
-                feedback["new_satisfactionsurveyvisitor"] = new EntityReference("new_visitor", visitorId);
+               // feedback["new_satisfactionsurveyvisitor"] = new EntityReference("new_visitor", visitorId);
 
                 //// 🔸 Validate and link TicketId  Date - 29-10-25
                 //if (string.IsNullOrWhiteSpace(model.TicketId))
