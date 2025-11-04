@@ -394,10 +394,9 @@
                 VisitorId: visitorIdGuid
             };
             payload[submitKey] = submitId;
-            //if (visitorIdGuid) payload.VisitorId = visitorIdGuid; // 🆕 added here
-            // if (window.visitorIdGlobal) payload["VisitorId"] = window.visitorIdGlobal;
-            console.log("VisitorId being sent:", visitorIdGuid);
-            console.log("Payload:", payload);
+            
+            //console.log("VisitorId being sent:", visitorIdGuid);
+            //console.log("Payload:", payload);
             console.debug("[Feedback] POST payload:", payload);
             try {
                 setSubmitEnabled(false); showLoader();
@@ -437,35 +436,78 @@
         }
 
         async function loadVisitor() {
-            const { visitorId, visitorNumber } = getQueryKeys(); let url = null;
-            if (visitorId)
+            const { visitorId, visitorNumber } = getQueryKeys();
+            let url = null;
+
+            if (visitorId) {
                 url = `${domain}/customers/by-visitor/${encodeURIComponent(visitorId)}`;
-            else if (visitorNumber)
+            } else if (visitorNumber) {
                 url = `${domain}/customers/by-visitor-number/${encodeURIComponent(visitorNumber)}`;
-            else {
-                ticketNumber.innerText = "Visitor: (Missing)"; userName.innerText = "(Unknown)"; setSubmitEnabled(false); return;
+            } else {
+                document.getElementById("ticketNumber").innerText = "Visitor: (Missing)";
+                document.getElementById("userName").innerText = "(Unknown)";
+                setSubmitEnabled(false);
+                return;
             }
+
             try {
                 setSubmitEnabled(false);
                 showLoader();
-                const res = await fetch(url, {
-                    headers: { "Authorization": `Bearer ${token}` }
-                });
-                const r = await res.json(); hideLoader();
-                if (!res.ok || !r.Data) {
-                    ticketNumber.innerText = "❌ Invalid visitor";
-                    userName.innerText = "(Unknown)";
+                const res = await fetch(url, { headers: { "Authorization": `Bearer ${token}` } });
+                const r = await res.json();
+                console.debug("[Visitor] GET response:", r);
+                hideLoader();
+
+                if ((r.Status || "").toLowerCase() !== "success" || !r.Data) {
+                    document.getElementById("ticketNumber").innerText = "Visitor: (Not Found)";
+                    document.getElementById("userName").innerText = "(Unknown)";
                     return;
                 }
+
                 const d = r.Data;
                 entityType = d.EntityType || d.entityType || null;
-                visitorIdGuid = d.VisitorId || d.visitorId || null; // 🆕 captured VisitorId
-                submitKey = entityType === "Contact" ? "ContactId" : entityType === "Account" ? "AccountId" : null;
-                submitId = pick(d.ContactId, d.AccountId, d.contactId, d.accountId, null);
-                ticketNumber.innerText = d.VisitorNumber || d.visitorNumber || "Unknown Visitor";
-                userName.innerText = d.FullName || d.fullName || "Anonymous Visitor";
-                setSubmitEnabled(true);
-            } catch (e) { hideLoader(); ticketNumber.innerText = "⚠️ Failed to load visitor"; userName.innerText = "Error"; setSubmitEnabled(false); }
+                visitorIdGuid = d.VisitorId || d.visitorId || null;
+                // Normalize IDs regardless of casing used by the API
+                const contactId = pick(d.ContactId, d.contactId, d.ContactID);
+                const accountId = pick(d.AccountId, d.accountId, d.AccountID);
+
+                // Normalize names/phones
+                const fullName = pick(d.FullName, d.fullName);
+                const firstName = pick(d.FirstName, d.firstName);
+                const lastName = pick(d.LastName, d.lastName);
+                const name = pick(d.Name, d.name);
+                const mobile = pick(d.MobilePhone, d.mobilePhone, d.Mobile);
+                const repPhone = pick(d.RepresentativePhone, d.representativePhone);
+                const visitorNo = pick(d.VisitorNumber, d.visitorNumber);
+
+                if (entityType === "Contact") {
+                    submitKey = "ContactId";
+                    submitId = contactId;
+                    const displayName = fullName || `${firstName || ""} ${lastName || ""}`.trim() || "(No Name)";
+                    document.getElementById("userName").innerText = displayName;
+                    document.getElementById("ticketNumber").innerText =
+                        visitorNo || "(Visitor Not Found)";
+                } else if (entityType === "Account") {
+                    submitKey = "AccountId";
+                    submitId = accountId;
+                    document.getElementById("userName").innerText = name || "(No Name)";
+                    document.getElementById("ticketNumber").innerText =
+                        visitorNo || "(Visitor Not Found)";
+                } else {
+                    // Unexpected response shape
+                    submitKey = null; submitId = null;
+                    document.getElementById("ticketNumber").innerText = "Visitor: (Unsupported type)";
+                    document.getElementById("userName").innerText = "(Unknown)";
+                }
+
+                setSubmitEnabled(!!submitKey && !!submitId);
+            } catch (err) {
+                hideLoader();
+                console.error("Load error:", err);
+                document.getElementById("ticketNumber").innerText = "Visitor: (Error)";
+                document.getElementById("userName").innerText = "(Unknown)";
+                setSubmitEnabled(false);
+            }
         }
 
         loadVisitor();
