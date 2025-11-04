@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Web;
@@ -7,7 +8,8 @@ namespace TicketSystemApi.Models
 {
     public class VisitorFeedbackModel
     {
-        public string VisitorId { get; set; } // Added VisitorID
+        [JsonProperty("VisitorId")]
+        public string VisitorId { get; set; }
         public string TicketId { get; set; } // Added TicketId
         public string ContactId { get; set; }   // optional
         public string AccountId { get; set; }
