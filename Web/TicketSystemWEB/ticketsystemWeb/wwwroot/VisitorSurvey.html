@@ -358,7 +358,9 @@
             const payload = { ServiceSatisfaction: q1Rating, StaffEfficiency: q2Rating, Reasons: getReasons(), SpecifyOther: getSpecifyOther(), Opinion: opinion, VisitorId:visitorIdGuid };
             payload[submitKey] = submitId;
             //if (visitorIdGuid) payload.VisitorId = visitorIdGuid; // 🆕 added here
-           // if (window.visitorIdGlobal) payload["VisitorId"] = window.visitorIdGlobal;
+            // if (window.visitorIdGlobal) payload["VisitorId"] = window.visitorIdGlobal;
+            console.log("VisitorId being sent:", visitorIdGuid);
+            console.log("Payload:", payload);
             console.debug("[Feedback] POST payload:", payload);
             try {
                 setSubmitEnabled(false); showLoader();
