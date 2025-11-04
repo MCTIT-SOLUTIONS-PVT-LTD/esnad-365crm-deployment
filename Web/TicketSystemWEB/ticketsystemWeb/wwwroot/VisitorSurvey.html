@@ -355,9 +355,10 @@
             if (!q1Rating || !q2Rating) { alert(t("mustAnswer")); return; }
             if (!submitKey || !submitId) { alert(t("missingEntity")); return; }
             let opinion = (comment.value || "").trim(); if (!opinion) opinion = currentLang === "ar" ? "لا توجد ملاحظات مضافة من العميل" : "No comments added by customer";
-            const payload = { ServiceSatisfaction: q1Rating, StaffEfficiency: q2Rating, Reasons: getReasons(), SpecifyOther: getSpecifyOther(), Opinion: opinion };
+            const payload = { ServiceSatisfaction: q1Rating, StaffEfficiency: q2Rating, Reasons: getReasons(), SpecifyOther: getSpecifyOther(), Opinion: opinion, VisitorId: window.visitorIdGuid };
             payload[submitKey] = submitId;
-            if (visitorIdGuid) payload.VisitorId = visitorIdGuid; // 🆕 added here
+            //if (visitorIdGuid) payload.VisitorId = visitorIdGuid; // 🆕 added here
+           // if (window.visitorIdGlobal) payload["VisitorId"] = window.visitorIdGlobal;
             console.debug("[Feedback] POST payload:", payload);
             try {
                 setSubmitEnabled(false); showLoader();
