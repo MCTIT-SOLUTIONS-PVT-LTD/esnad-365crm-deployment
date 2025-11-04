@@ -290,7 +290,7 @@ namespace TicketSystemApi.Controllers
                 }
 
                 // Validate and link Visitor (mandatory) Date - 29-10-25
-               if (string.IsNullOrWhiteSpace(model.VisitorId))
+               if (!string.IsNullOrWhiteSpace(model.VisitorId))
                {
                     return Content(HttpStatusCode.BadRequest,
                         ApiResponse<object>.Error("VisitorId is required."));
