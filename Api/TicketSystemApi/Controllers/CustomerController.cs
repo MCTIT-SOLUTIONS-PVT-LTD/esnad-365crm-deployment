@@ -237,7 +237,6 @@ namespace TicketSystemApi.Controllers
             if (model == null || (string.IsNullOrWhiteSpace(model.ContactId) && string.IsNullOrWhiteSpace(model.AccountId) && string.IsNullOrWhiteSpace(model.VisitorId)))
                 return Content(HttpStatusCode.BadRequest, ApiResponse<object>.Error(" VisitorId,ContactId or AccountId is required."));
 
-            System.Diagnostics.Debug.WriteLine("Model received: " + Newtonsoft.Json.JsonConvert.SerializeObject(model));
 
             try
             {
@@ -291,10 +290,10 @@ namespace TicketSystemApi.Controllers
                 }
 
                 // Validate and link Visitor (mandatory) Date - 29-10-25
-               if (!string.IsNullOrWhiteSpace(model.VisitorId))
+               if (string.IsNullOrWhiteSpace(model.VisitorId))
                {
                     return Content(HttpStatusCode.BadRequest,
-                        ApiResponse<object>.Error("VisitorId is required."));
+                        ApiResponse<object>.Error("VisitorId is required.Its Null"));
                }
 
                Guid VisitorId;

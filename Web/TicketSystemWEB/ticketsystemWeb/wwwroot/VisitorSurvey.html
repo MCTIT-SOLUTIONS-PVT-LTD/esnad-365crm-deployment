@@ -345,17 +345,54 @@
         }
         document.getElementById("languageSwitcher").addEventListener("change", e => setLanguage(e.target.value)); setLanguage("ar");
 
-        document.querySelectorAll('.star').forEach(star => { star.addEventListener('click', () => { const q = star.getAttribute('data-question'); const v = parseInt(star.getAttribute('data-value')); if (q === "q1") q1Rating = v; if (q === "q2") q2Rating = v; document.querySelectorAll(`.star[data-question="${q}"]`).forEach(s => s.classList.toggle('selected', parseInt(s.getAttribute('data-value')) <= v)); }); });
-        document.getElementById("reasonOther").addEventListener("change", function () { const o = document.getElementById("reasonOtherText"); o.style.display = this.checked ? "block" : "none"; if (!this.checked) o.value = ""; });
-        function getReasons() { const r = []; if (reason1.checked) r.push(1); if (reason2.checked) r.push(2); if (reason3.checked) r.push(3); if (reasonOther.checked) r.push(4); return r; }
+        document.querySelectorAll('.star').forEach(star => {
+            star.addEventListener('click', () => {
+                const q = star.getAttribute('data-question');
+                const v = parseInt(star.getAttribute('data-value'));
+                if (q === "q1") q1Rating = v;
+                if (q === "q2") q2Rating = v;
+                document.querySelectorAll(`.star[data-question="${q}"]`).forEach(s => s.classList.toggle('selected', parseInt(s.getAttribute('data-value')) <= v));
+            });
+        });
+        document.getElementById("reasonOther").addEventListener("change", function () {
+            const o = document.getElementById("reasonOtherText");
+            o.style.display = this.checked ? "block" : "none";
+            if (!this.checked) o.value = "";
+        });
+        function getReasons() {
+            const r = [];
+            if (reason1.checked) r.push(1); if (reason2.checked) r.push(2);
+            if (reason3.checked) r.push(3); if (reasonOther.checked) r.push(4); return r;
+        }
         function getSpecifyOther() { return reasonOther.checked ? reasonOtherText.value.trim() : ""; }
-        function showLoader() { loaderOverlay.style.display = "flex"; } function hideLoader() { loaderOverlay.style.display = "none"; } function setSubmitEnabled(b) { submitBtn.disabled = !b; }
+        function showLoader() {
+            loaderOverlay.style.display = "flex";
+        }
+        function hideLoader() {
+            loaderOverlay.style.display = "none";
+        }
+        function setSubmitEnabled(b) {
+            submitBtn.disabled = !b;
+        }
 
         async function submitFeedback() {
-            if (!q1Rating || !q2Rating) { alert(t("mustAnswer")); return; }
-            if (!submitKey || !submitId) { alert(t("missingEntity")); return; }
-            let opinion = (comment.value || "").trim(); if (!opinion) opinion = currentLang === "ar" ? "لا توجد ملاحظات مضافة من العميل" : "No comments added by customer";
-            const payload = { ServiceSatisfaction: q1Rating, StaffEfficiency: q2Rating, Reasons: getReasons(), SpecifyOther: getSpecifyOther(), Opinion: opinion, VisitorId:visitorIdGuid };
+            if (!q1Rating || !q2Rating) {
+                alert(t("mustAnswer")); return;
+            }
+            if (!submitKey || !submitId) {
+                alert(t("missingEntity")); return;
+            }
+            let opinion = (comment.value || "").trim();
+            if (!opinion)
+                opinion = currentLang === "ar" ? "لا توجد ملاحظات مضافة من العميل" : "No comments added by customer";
+            const payload = {
+                ServiceSatisfaction: q1Rating,
+                StaffEfficiency: q2Rating,
+                Reasons: getReasons(),
+                SpecifyOther: getSpecifyOther(),
+                Opinion: opinion,
+                VisitorId: visitorIdGuid
+            };
             payload[submitKey] = submitId;
             //if (visitorIdGuid) payload.VisitorId = visitorIdGuid; // 🆕 added here
             // if (window.visitorIdGlobal) payload["VisitorId"] = window.visitorIdGlobal;
@@ -364,26 +401,62 @@
             console.debug("[Feedback] POST payload:", payload);
             try {
                 setSubmitEnabled(false); showLoader();
-                const res = await fetch(`${domain}/customers/visitor-feedback`, { method: "POST", headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-                const r = await res.json(); hideLoader(); setSubmitEnabled(true);
-                if ((r.Status || "").toLowerCase() === "success") { formSection.style.display = "none"; thankYouSection.style.display = "block"; confetti({ particleCount: 120, spread: 70, origin: { y: 0.6 } }); }
+                const res = await fetch(`${domain}/customers/visitor-feedback`,
+                    {
+                        method: "POST",
+                        headers: {
+                            "Authorization": `Bearer ${token}`,
+                            "Content-Type": "application/json"
+                        }, body: JSON.stringify(payload)
+                    });
+                const r = await res.json(); hideLoader();
+                setSubmitEnabled(true);
+                if ((r.Status || "").toLowerCase() === "success") {
+                    formSection.style.display = "none"; thankYouSection.style.display = "block"; confetti({ particleCount: 120, spread: 70, origin: { y: 0.6 } });
+                }
                 else if ((r.Message || "").toLowerCase().includes("already")) { formSection.style.display = "none"; errorSection.style.display = "block"; }
                 else alert("❌ Error: " + (r.Message || "Unknown error"));
-            } catch (e) { hideLoader(); setSubmitEnabled(true); alert(currentLang === "ar" ? "تعذّر إرسال الملاحظات." : "Could not submit feedback."); }
+            } catch (e) {
+                hideLoader();
+                setSubmitEnabled(true);
+                alert(currentLang === "ar" ? "تعذّر إرسال الملاحظات." : "Could not submit feedback.");
+            }
         }
 
-        function getQueryKeys() { const p = new URLSearchParams(location.search); return { visitorId: p.get("visitorGuid") || p.get("v"), visitorNumber: p.get("visitorId") || p.get("visitorNumber") || p.get("visitorID") }; }
-        function pick(...c) { for (const i of c) { if (i !== undefined && i !== null) return i; } return undefined; }
+        function getQueryKeys() {
+            const p = new URLSearchParams(location.search);
+            return { visitorId: p.get("visitorGuid") || p.get("v"), visitorNumber: p.get("visitorId") || p.get("visitorNumber") || p.get("visitorID") };
+        }
+        function pick(...c) {
+            for (const i of c)
+            {
+                if (i !== undefined && i !== null)
+                    return i;
+            }
+                 return undefined;
+        }
 
         async function loadVisitor() {
             const { visitorId, visitorNumber } = getQueryKeys(); let url = null;
-            if (visitorId) url = `${domain}/customers/by-visitor/${encodeURIComponent(visitorId)}`;
-            else if (visitorNumber) url = `${domain}/customers/by-visitor-number/${encodeURIComponent(visitorNumber)}`;
-            else { ticketNumber.innerText = "Visitor: (Missing)"; userName.innerText = "(Unknown)"; setSubmitEnabled(false); return; }
+            if (visitorId)
+                url = `${domain}/customers/by-visitor/${encodeURIComponent(visitorId)}`;
+            else if (visitorNumber)
+                url = `${domain}/customers/by-visitor-number/${encodeURIComponent(visitorNumber)}`;
+            else {
+                ticketNumber.innerText = "Visitor: (Missing)"; userName.innerText = "(Unknown)"; setSubmitEnabled(false); return;
+            }
             try {
-                setSubmitEnabled(false); showLoader();
-                const res = await fetch(url, { headers: { "Authorization": `Bearer ${token}` } }); const r = await res.json(); hideLoader();
-                if (!res.ok || !r.Data) { ticketNumber.innerText = "❌ Invalid visitor"; userName.innerText = "(Unknown)"; return; }
+                setSubmitEnabled(false);
+                showLoader();
+                const res = await fetch(url, {
+                    headers: { "Authorization": `Bearer ${token}` }
+                });
+                const r = await res.json(); hideLoader();
+                if (!res.ok || !r.Data) {
+                    ticketNumber.innerText = "❌ Invalid visitor";
+                    userName.innerText = "(Unknown)";
+                    return;
+                }
                 const d = r.Data;
                 entityType = d.EntityType || d.entityType || null;
                 visitorIdGuid = d.VisitorId || d.visitorId || null; // 🆕 captured VisitorId
