@@ -234,24 +234,10 @@ namespace TicketSystemApi.Controllers
             if (authHeader == null || authHeader.Scheme != "Bearer" || authHeader.Parameter != expectedToken)
                 return Content(HttpStatusCode.Unauthorized, ApiResponse<object>.Error("Unauthorized - Invalid bearer token"));
 
-            if (model == null || (string.IsNullOrWhiteSpace(model.ContactId) && string.IsNullOrWhiteSpace(model.AccountId)))
-                return Content(HttpStatusCode.BadRequest, ApiResponse<object>.Error("Either ContactId or AccountId is required."));
+            if (model == null || (string.IsNullOrWhiteSpace(model.ContactId) && string.IsNullOrWhiteSpace(model.AccountId) && string.IsNullOrWhiteSpace(model.VisitorId)))
+                return Content(HttpStatusCode.BadRequest, ApiResponse<object>.Error(" VisitorId,ContactId or AccountId is required."));
 
-            // ✅ Merge query parameter if model.VisitorId is null
-            if (string.IsNullOrWhiteSpace(model?.VisitorId))
-            {
-                var queryVisitorId = HttpContext.Current.Request.QueryString["visitorId"];
-                if (!string.IsNullOrWhiteSpace(queryVisitorId))
-                {
-                    model.VisitorId = queryVisitorId;
-                }
-            }
-
-            if (model == null || string.IsNullOrWhiteSpace(model.VisitorId))
-                return Content(HttpStatusCode.BadRequest,
-                    ApiResponse<object>.Error("VisitorId or VisitorNumber is required."));
-
-
+           
             try
             {
                 var service = _crmService.GetService();
