@@ -1,12 +1,13 @@
-using System;
-using System.Linq;
-using System.Net;
-using System.Web.Http;
-using System.Configuration;
 using Microsoft.Xrm.Sdk;
 using Microsoft.Xrm.Sdk.Query;
-using TicketSystemApi.Services;
+using System;
+using System.Configuration;
+using System.Linq;
+using System.Net;
+using System.Web;
+using System.Web.Http;
 using TicketSystemApi.Models;
+using TicketSystemApi.Services;
 
 namespace TicketSystemApi.Controllers
 {
@@ -233,8 +234,9 @@ namespace TicketSystemApi.Controllers
             if (authHeader == null || authHeader.Scheme != "Bearer" || authHeader.Parameter != expectedToken)
                 return Content(HttpStatusCode.Unauthorized, ApiResponse<object>.Error("Unauthorized - Invalid bearer token"));
 
-            if (model == null || (string.IsNullOrWhiteSpace(model.ContactId) && string.IsNullOrWhiteSpace(model.AccountId)))
-                return Content(HttpStatusCode.BadRequest, ApiResponse<object>.Error("Either ContactId or AccountId is required."));
+            if (model == null || (string.IsNullOrWhiteSpace(model.ContactId) && string.IsNullOrWhiteSpace(model.AccountId) && string.IsNullOrWhiteSpace(model.VisitorId)))
+                return Content(HttpStatusCode.BadRequest, ApiResponse<object>.Error(" VisitorId,ContactId or AccountId is required."));
+
 
             try
             {
@@ -288,47 +290,26 @@ namespace TicketSystemApi.Controllers
                 }
 
                 // Validate and link Visitor (mandatory) Date - 29-10-25
-                //if (string.IsNullOrWhiteSpace(model.VisitorId))
-                //{
-                //    return Content(HttpStatusCode.BadRequest,
-                //        ApiResponse<object>.Error("VisitorId is required."));
-                //}
-
-              /*  Guid visitorId;
-                try
-                {
-                    visitorId = new Guid(model.VisitorId);
-                }
-                catch
-                {
+               if (string.IsNullOrWhiteSpace(model.VisitorId))
+               {
                     return Content(HttpStatusCode.BadRequest,
-                        ApiResponse<object>.Error("Invalid VisitorId format."));
-                }*/
+                        ApiResponse<object>.Error("VisitorId is required.Its Null"));
+               }
 
-                // ✅ Link Visitor lookup field
-               // feedback["new_satisfactionsurveyvisitor"] = new EntityReference("new_visitor", visitorId);
+               Guid VisitorId;
+                try
+               {
+                   VisitorId = new Guid(model.VisitorId);
+               }
+               catch
+               {
+                   return Content(HttpStatusCode.BadRequest,
+                       ApiResponse<object>.Error("Invalid VisitorId format."));
+               }
 
-                //// 🔸 Validate and link TicketId  Date - 29-10-25
-                //if (string.IsNullOrWhiteSpace(model.TicketId))
-                //{
-                //    return Content(HttpStatusCode.BadRequest,
-                //        ApiResponse<object>.Error("TicketId is required."));
-                //}
+               // // ✅ Link Visitor lookup field
+               feedback["new_satisfactionsurveyvisitor"] = new EntityReference("new_visitor", VisitorId);
 
-                //Guid TicketId;
-                //try
-                //{
-                //    TicketId = new Guid(model.TicketId);
-                //}
-                //catch
-                //{
-                //    return Content(HttpStatusCode.BadRequest,
-                //        ApiResponse<object>.Error("Invalid VisitorId format."));
-                //}
-
-                //// ✅ Link Ticket lookup field
-                //feedback["new_satisfactionsurveyticket"] = new EntityReference("incident", TicketId);
-                //------Date - 29-10-25  Vrushti
 
 
                 // 🔹 Common fields
