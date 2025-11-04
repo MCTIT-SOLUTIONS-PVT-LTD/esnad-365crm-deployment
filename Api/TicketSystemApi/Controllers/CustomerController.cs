@@ -237,7 +237,8 @@ namespace TicketSystemApi.Controllers
             if (model == null || (string.IsNullOrWhiteSpace(model.ContactId) && string.IsNullOrWhiteSpace(model.AccountId) && string.IsNullOrWhiteSpace(model.VisitorId)))
                 return Content(HttpStatusCode.BadRequest, ApiResponse<object>.Error(" VisitorId,ContactId or AccountId is required."));
 
-           
+            System.Diagnostics.Debug.WriteLine("Model received: " + Newtonsoft.Json.JsonConvert.SerializeObject(model));
+
             try
             {
                 var service = _crmService.GetService();
