@@ -200,6 +200,7 @@
     </style>
 </head>
 <body>
+
     <div id="formSection" class="feedback-card">
         <div class="position-absolute" style="top: 20px; right: 30px;">
             <select id="languageSwitcher" class="form-select form-select-sm" style="border-radius: 20px;">
@@ -213,6 +214,7 @@
             <div class="ticket-number" id="ticketNumber">Loading Visitor...</div>
         </div>
 
+        <!-- Questions -->
         <label id="q1Label" class="form-label mb-0">...</label>
         <div class="star-rating" id="q1Stars">
             <span class="star" data-value="1" data-question="q1">★</span>
@@ -233,24 +235,11 @@
 
         <div class="mb-3">
             <label id="q3Label" class="form-label">...</label>
-            <div class="form-check text-start">
-                <input class="form-check-input" type="checkbox" id="reason1">
-                <label class="form-check-label" for="reason1"></label>
-            </div>
-            <div class="form-check text-start">
-                <input class="form-check-input" type="checkbox" id="reason2">
-                <label class="form-check-label" for="reason2"></label>
-            </div>
-            <div class="form-check text-start">
-                <input class="form-check-input" type="checkbox" id="reason3">
-                <label class="form-check-label" for="reason3"></label>
-            </div>
-            <div class="form-check text-start">
-                <input class="form-check-input" type="checkbox" id="reasonOther">
-                <label class="form-check-label" for="reasonOther"></label>
-            </div>
-            <textarea class="form-control mt-2" id="reasonOtherText"
-                      placeholder="Please specify..." style="display:none;" rows="3"></textarea>
+            <div class="form-check text-start"><input class="form-check-input" type="checkbox" id="reason1"><label class="form-check-label" for="reason1"></label></div>
+            <div class="form-check text-start"><input class="form-check-input" type="checkbox" id="reason2"><label class="form-check-label" for="reason2"></label></div>
+            <div class="form-check text-start"><input class="form-check-input" type="checkbox" id="reason3"><label class="form-check-label" for="reason3"></label></div>
+            <div class="form-check text-start"><input class="form-check-input" type="checkbox" id="reasonOther"><label class="form-check-label" for="reasonOther"></label></div>
+            <textarea class="form-control mt-2" id="reasonOtherText" placeholder="Please specify..." style="display:none;" rows="3"></textarea>
         </div>
 
         <div class="mb-3">
@@ -276,7 +265,7 @@
     <div id="errorSection">
         <div class="emoji">❌</div>
         <h4>Feedback Already Submitted</h4>
-        <p>You have already provided feedback for this ticket. Thank you!</p>
+        <p>You have already provided feedback for this visitor. Thank you!</p>
     </div>
 
     <div id="loaderOverlay">
@@ -284,199 +273,126 @@
             <span class="visually-hidden">Loading...</span>
         </div>
     </div>
-</body>
 
-<script>
-    const domain = window.ENV?.DOMAIN || "__DOMAIN__";
-    const token = window.ENV?.TOKEN || "__API_TOKEN__";
+    <script>
+        // ===== Config =====
+        const domain = window.ENV?.DOMAIN || "__DOMAIN__";
+        const token = window.ENV?.TOKEN || "__API_TOKEN__";
 
-    let q1Rating = 0, q2Rating = 0;
-    let currentLang = "ar";
-    let submitKey = null;
-    let submitId = null;
-    let entityType = null;
-    let visitorIdGuid = null; // 🆕 Added VisitorId variable
+        // ===== State =====
+        let q1Rating = 0, q2Rating = 0;
+        let currentLang = "ar";
+        let submitKey = null, submitId = null, entityType = null;
+        let visitorIdGuid = null; // 🆕 added visitor reference
+        const reasonValues = { reason1: 1, reason2: 2, reason3: 3, reasonOther: 4 };
 
-    const reasonValues = { reason1: 1, reason2: 2, reason3: 3, reasonOther: 4 };
-
-    const translations = { /* (same translations block as before) */ };
-
-    function t(key) { return (translations[currentLang] || translations.en)[key]; }
-
-    function setLanguage(lang) { /* same as before */ }
-
-    document.getElementById("languageSwitcher").addEventListener("change", e => setLanguage(e.target.value));
-    setLanguage("ar");
-
-    document.querySelectorAll('.star').forEach(star => {
-        star.addEventListener('click', () => {
-            const q = star.getAttribute('data-question');
-            const v = parseInt(star.getAttribute('data-value'));
-            if (q === "q1") q1Rating = v;
-            if (q === "q2") q2Rating = v;
-            document.querySelectorAll(`.star[data-question="${q}"]`)
-                .forEach(s => s.classList.toggle('selected', parseInt(s.getAttribute('data-value')) <= v));
-        });
-    });
-
-    document.getElementById("reasonOther").addEventListener("change", function () {
-        const otherText = document.getElementById("reasonOtherText");
-        otherText.style.display = this.checked ? "block" : "none";
-        if (!this.checked) otherText.value = "";
-    });
-
-    function getReasons() {
-        const res = [];
-        if (document.getElementById("reason1").checked) res.push(reasonValues.reason1);
-        if (document.getElementById("reason2").checked) res.push(reasonValues.reason2);
-        if (document.getElementById("reason3").checked) res.push(reasonValues.reason3);
-        if (document.getElementById("reasonOther").checked) res.push(reasonValues.reasonOther);
-        return res;
-    }
-    function getSpecifyOther() {
-        return document.getElementById("reasonOther").checked
-            ? document.getElementById("reasonOtherText").value.trim()
-            : "";
-    }
-
-    function showLoader() { document.getElementById("loaderOverlay").style.display = "flex"; }
-    function hideLoader() { document.getElementById("loaderOverlay").style.display = "none"; }
-    function setSubmitEnabled(enabled) { document.getElementById("submitBtn").disabled = !enabled; }
-
-    async function submitFeedback() {
-        const mustAnswerMsg = t("mustAnswer");
-        const missingEntityMsg = t("missingEntity");
-        let opinion = (document.getElementById('comment').value || "").trim();
-        if (!opinion) opinion = currentLang === "ar" ? "لا توجد ملاحظات مضافة من العميل" : "No comments added by customer";
-
-        if (!q1Rating || !q2Rating) { alert(mustAnswerMsg); return; }
-        if (!submitKey || !submitId) { alert(missingEntityMsg); return; }
-
-        const payload = {
-            ServiceSatisfaction: q1Rating,
-            StaffEfficiency: q2Rating,
-            Reasons: getReasons(),
-            SpecifyOther: getSpecifyOther(),
-            Opinion: opinion
+        // ===== i18n =====
+        const translations = {
+            en: {
+                title: "Your Feedback",
+                q1: "How satisfied are you with the service provided at the center?",
+                q2: "How satisfied are you with the efficiency of the staff who assisted you?",
+                q3: "Help us better understand why you chose to visit the service center instead of using other communication channels:",
+                q4: "Your opinion matters to us — please share your comments and suggestions:",
+                reasons: ["Ineffectiveness of digital channels", "Insufficient information available in the Help Center", "Insufficient information available on the Ta’adeen platform", "Other"],
+                otherPlaceholder: "Please specify...",
+                submit: "Submit",
+                thankYouTitle: "Thank You!",
+                thankYouText: "Your feedback has been submitted successfully.",
+                alreadySubmittedTitle: "Feedback Already Submitted",
+                alreadySubmittedText: "You have already provided feedback for this visitor. Thank you!",
+                mustAnswer: "Please answer both rating questions.",
+                missingEntity: "Cannot submit feedback. Visitor details not loaded yet."
+            },
+            ar: {
+                title: "ملاحظاتك",
+                q1: "ما مدى رضاك عن الخدمة المقدمة عبر المركز؟ ",
+                q2: "ما مدى رضاك عن كفاءة الموظف الذي قام بخدمتك ؟",
+                q3: "ساعدنا أكثر بمعرفة سبب اختيارك زيارة مركز الخدمة بدلاً من قنوات التواصل الاخرى ؟ ",
+                q4: "رأيك يهمنا شاركنا ملاحظاتك ومقترحاتك:",
+                reasons: ["عدم فاعلية القنوات الرقمية", "عدم وجود معلومات كافية في مركز المساعدة", "عدم وجود معلومات كافية في منصة تعدين", "خيار آخر"],
+                otherPlaceholder: "الرجاء التحديد...",
+                submit: "إرسال",
+                thankYouTitle: "شكرًا لك!",
+                thankYouText: "تم إرسال ملاحظاتك بنجاح.",
+                alreadySubmittedTitle: "تم إرسال الملاحظات مسبقًا",
+                alreadySubmittedText: "لقد قدمت ملاحظاتك بالفعل لهذا الزائر. شكرًا لك!",
+                mustAnswer: "يرجى الإجابة على سؤالَي التقييم.",
+                missingEntity: "لا يمكن الإرسال قبل تحميل بيانات الزائر."
+            }
         };
-        payload[submitKey] = submitId;
-        if (visitorIdGuid) payload.VisitorId = visitorIdGuid; // 🆕 Include VisitorId in payload
 
-        console.debug("[Feedback] POST payload:", payload);
-
-        try {
-            setSubmitEnabled(false);
-            showLoader();
-            const res = await fetch(`${domain}/customers/visitor-feedback`, {
-                method: "POST",
-                headers: {
-                    "Authorization": `Bearer ${token}`,
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify(payload)
-            });
-            const r = await res.json();
-            console.debug("[Feedback] POST response:", r);
-            hideLoader();
-            setSubmitEnabled(true);
-
-            const status = (r.Status || "").toLowerCase();
-            const msg = (r.Message || "").toLowerCase();
-
-            if (status === "success") {
-                document.getElementById("formSection").style.display = "none";
-                document.getElementById("thankYouSection").style.display = "block";
-                confetti({ particleCount: 120, spread: 70, origin: { y: 0.6 } });
-            } else if (msg.includes("already submitted")) {
-                document.getElementById("formSection").style.display = "none";
-                document.getElementById("errorSection").style.display = "block";
-            } else {
-                alert("❌ Error: " + (r.Message || "Unknown error"));
-            }
-        } catch (err) {
-            hideLoader();
-            setSubmitEnabled(true);
-            console.error(err);
-            alert(currentLang === "ar" ? "تعذّر إرسال الملاحظات." : "Could not submit feedback.");
+        function t(k) { return (translations[currentLang] || translations.en)[k]; }
+        function setLanguage(lang) {
+            currentLang = lang; const tx = translations[lang] || translations.en;
+            document.querySelector("#formSection h4").innerText = tx.title;
+            document.getElementById("q1Label").innerText = tx.q1;
+            document.getElementById("q2Label").innerText = tx.q2;
+            document.getElementById("q3Label").innerText = tx.q3;
+            document.getElementById("q4Label").innerText = tx.q4;
+            document.querySelector("label[for='reason1']").innerText = tx.reasons[0];
+            document.querySelector("label[for='reason2']").innerText = tx.reasons[1];
+            document.querySelector("label[for='reason3']").innerText = tx.reasons[2];
+            document.querySelector("label[for='reasonOther']").innerText = tx.reasons[3];
+            document.getElementById("reasonOtherText").placeholder = tx.otherPlaceholder;
+            document.querySelector(".btn-submit").innerText = tx.submit;
+            document.querySelector("#thankYouSection h4").innerText = tx.thankYouTitle;
+            document.querySelector("#thankYouSection p").innerText = tx.thankYouText;
+            document.querySelector("#errorSection h4").innerText = tx.alreadySubmittedTitle;
+            document.querySelector("#errorSection p").innerText = tx.alreadySubmittedText;
+            document.body.dir = lang === "ar" ? "rtl" : "ltr";
+            document.querySelector(".feedback-card").style.textAlign = lang === "ar" ? "right" : "left";
         }
-    }
-    window.submitFeedback = submitFeedback;
+        document.getElementById("languageSwitcher").addEventListener("change", e => setLanguage(e.target.value)); setLanguage("ar");
 
-    function getQueryKeys() {
-        const p = new URLSearchParams(window.location.search);
-        const visitorId = p.get("visitorGuid") || p.get("v");
-        const visitorNumber = p.get("visitorId") || p.get("visitorNumber") || p.get("visitorID");
-        return { visitorId, visitorNumber };
-    }
-    function pick(...candidates) {
-        for (const c of candidates) { if (c !== undefined && c !== null) return c; }
-        return undefined;
-    }
+        document.querySelectorAll('.star').forEach(star => { star.addEventListener('click', () => { const q = star.getAttribute('data-question'); const v = parseInt(star.getAttribute('data-value')); if (q === "q1") q1Rating = v; if (q === "q2") q2Rating = v; document.querySelectorAll(`.star[data-question="${q}"]`).forEach(s => s.classList.toggle('selected', parseInt(s.getAttribute('data-value')) <= v)); }); });
+        document.getElementById("reasonOther").addEventListener("change", function () { const o = document.getElementById("reasonOtherText"); o.style.display = this.checked ? "block" : "none"; if (!this.checked) o.value = ""; });
+        function getReasons() { const r = []; if (reason1.checked) r.push(1); if (reason2.checked) r.push(2); if (reason3.checked) r.push(3); if (reasonOther.checked) r.push(4); return r; }
+        function getSpecifyOther() { return reasonOther.checked ? reasonOtherText.value.trim() : ""; }
+        function showLoader() { loaderOverlay.style.display = "flex"; } function hideLoader() { loaderOverlay.style.display = "none"; } function setSubmitEnabled(b) { submitBtn.disabled = !b; }
 
-    async function loadVisitor() {
-        const { visitorId, visitorNumber } = getQueryKeys();
-        let url = null;
-
-        if (visitorId) url = `${domain}/customers/by-visitor/${encodeURIComponent(visitorId)}`;
-        else if (visitorNumber) url = `${domain}/customers/by-visitor-number/${encodeURIComponent(visitorNumber)}`;
-        else {
-            document.getElementById("ticketNumber").innerText = "Visitor: (Missing)";
-            document.getElementById("userName").innerText = "(Unknown)";
-            setSubmitEnabled(false);
-            return;
+        async function submitFeedback() {
+            if (!q1Rating || !q2Rating) { alert(t("mustAnswer")); return; }
+            if (!submitKey || !submitId) { alert(t("missingEntity")); return; }
+            let opinion = (comment.value || "").trim(); if (!opinion) opinion = currentLang === "ar" ? "لا توجد ملاحظات مضافة من العميل" : "No comments added by customer";
+            const payload = { ServiceSatisfaction: q1Rating, StaffEfficiency: q2Rating, Reasons: getReasons(), SpecifyOther: getSpecifyOther(), Opinion: opinion };
+            payload[submitKey] = submitId;
+            if (visitorIdGuid) payload.VisitorId = visitorIdGuid; // 🆕 added here
+            console.debug("[Feedback] POST payload:", payload);
+            try {
+                setSubmitEnabled(false); showLoader();
+                const res = await fetch(`${domain}/customers/visitor-feedback`, { method: "POST", headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+                const r = await res.json(); hideLoader(); setSubmitEnabled(true);
+                if ((r.Status || "").toLowerCase() === "success") { formSection.style.display = "none"; thankYouSection.style.display = "block"; confetti({ particleCount: 120, spread: 70, origin: { y: 0.6 } }); }
+                else if ((r.Message || "").toLowerCase().includes("already")) { formSection.style.display = "none"; errorSection.style.display = "block"; }
+                else alert("❌ Error: " + (r.Message || "Unknown error"));
+            } catch (e) { hideLoader(); setSubmitEnabled(true); alert(currentLang === "ar" ? "تعذّر إرسال الملاحظات." : "Could not submit feedback."); }
         }
 
-        try {
-            setSubmitEnabled(false);
-            showLoader();
-            const res = await fetch(url, { headers: { "Authorization": `Bearer ${token}` } });
-            const r = await res.json();
-            console.debug("[Visitor] GET response:", r);
-            hideLoader();
+        function getQueryKeys() { const p = new URLSearchParams(location.search); return { visitorId: p.get("visitorGuid") || p.get("v"), visitorNumber: p.get("visitorId") || p.get("visitorNumber") || p.get("visitorID") }; }
+        function pick(...c) { for (const i of c) { if (i !== undefined && i !== null) return i; } return undefined; }
 
-            if ((r.Status || "").toLowerCase() !== "success" || !r.Data) {
-                document.getElementById("ticketNumber").innerText = "Visitor: (Not Found)";
-                document.getElementById("userName").innerText = "(Unknown)";
-                return;
-            }
-
-            const d = r.Data;
-            entityType = d.EntityType || d.entityType || null;
-            visitorIdGuid = d.VisitorId || d.visitorId || null; // 🆕 Capture VisitorId from API
-
-            const contactId = pick(d.ContactId, d.contactId, d.ContactID);
-            const accountId = pick(d.AccountId, d.accountId, d.AccountID);
-            const fullName = pick(d.FullName, d.fullName);
-            const firstName = pick(d.FirstName, d.firstName);
-            const lastName = pick(d.LastName, d.lastName);
-            const name = pick(d.Name, d.name);
-            const visitorNo = pick(d.VisitorNumber, d.visitorNumber);
-
-            if (entityType === "Contact") {
-                submitKey = "ContactId";
-                submitId = contactId;
-                const displayName = fullName || `${firstName || ""} ${lastName || ""}`.trim() || "(No Name)";
-                document.getElementById("userName").innerText = displayName;
-                document.getElementById("ticketNumber").innerText = visitorNo || "(Visitor Not Found)";
-            } else if (entityType === "Account") {
-                submitKey = "AccountId";
-                submitId = accountId;
-                document.getElementById("userName").innerText = name || "(No Name)";
-                document.getElementById("ticketNumber").innerText = visitorNo || "(Visitor Not Found)";
-            } else {
-                submitKey = null; submitId = null;
-                document.getElementById("userName").innerText = "(No Name)";
-                document.getElementById("ticketNumber").innerText = "(Unknown Entity)";
-            }
-            setSubmitEnabled(true);
-        } catch (err) {
-            hideLoader();
-            console.error("[Visitor] Error:", err);
-            document.getElementById("ticketNumber").innerText = "Visitor: (Error)";
-            document.getElementById("userName").innerText = "(Error)";
-            setSubmitEnabled(false);
+        async function loadVisitor() {
+            const { visitorId, visitorNumber } = getQueryKeys(); let url = null;
+            if (visitorId) url = `${domain}/customers/by-visitor/${encodeURIComponent(visitorId)}`;
+            else if (visitorNumber) url = `${domain}/customers/by-visitor-number/${encodeURIComponent(visitorNumber)}`;
+            else { ticketNumber.innerText = "Visitor: (Missing)"; userName.innerText = "(Unknown)"; setSubmitEnabled(false); return; }
+            try {
+                setSubmitEnabled(false); showLoader();
+                const res = await fetch(url, { headers: { "Authorization": `Bearer ${token}` } }); const r = await res.json(); hideLoader();
+                if (!res.ok || !r.Data) { ticketNumber.innerText = "❌ Invalid visitor"; userName.innerText = "(Unknown)"; return; }
+                const d = r.Data;
+                entityType = d.EntityType || d.entityType || null;
+                visitorIdGuid = d.VisitorId || d.visitorId || null; // 🆕 captured VisitorId
+                submitKey = entityType === "Contact" ? "ContactId" : entityType === "Account" ? "AccountId" : null;
+                submitId = pick(d.ContactId, d.AccountId, d.contactId, d.accountId, null);
+                ticketNumber.innerText = d.VisitorNumber || d.visitorNumber || "Unknown Visitor";
+                userName.innerText = d.FullName || d.fullName || "Anonymous Visitor";
+                setSubmitEnabled(true);
+            } catch (e) { hideLoader(); ticketNumber.innerText = "⚠️ Failed to load visitor"; userName.innerText = "Error"; setSubmitEnabled(false); }
         }
-    }
-    window.addEventListener("DOMContentLoaded", loadVisitor);
-</script>
+
+        loadVisitor();
+    </script>
+</body>
 </html>
