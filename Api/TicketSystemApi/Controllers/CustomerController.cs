@@ -1,12 +1,13 @@
-using System;
-using System.Linq;
-using System.Net;
-using System.Web.Http;
-using System.Configuration;
 using Microsoft.Xrm.Sdk;
 using Microsoft.Xrm.Sdk.Query;
-using TicketSystemApi.Services;
+using System;
+using System.Configuration;
+using System.Linq;
+using System.Net;
+using System.Web;
+using System.Web.Http;
 using TicketSystemApi.Models;
+using TicketSystemApi.Services;
 
 namespace TicketSystemApi.Controllers
 {
@@ -236,6 +237,21 @@ namespace TicketSystemApi.Controllers
             if (model == null || (string.IsNullOrWhiteSpace(model.ContactId) && string.IsNullOrWhiteSpace(model.AccountId)))
                 return Content(HttpStatusCode.BadRequest, ApiResponse<object>.Error("Either ContactId or AccountId is required."));
 
+            // ✅ Merge query parameter if model.VisitorId is null
+            if (string.IsNullOrWhiteSpace(model?.VisitorId))
+            {
+                var queryVisitorId = HttpContext.Current.Request.QueryString["visitorId"];
+                if (!string.IsNullOrWhiteSpace(queryVisitorId))
+                {
+                    model.VisitorId = queryVisitorId;
+                }
+            }
+
+            if (model == null || string.IsNullOrWhiteSpace(model.VisitorId))
+                return Content(HttpStatusCode.BadRequest,
+                    ApiResponse<object>.Error("VisitorId or VisitorNumber is required."));
+
+
             try
             {
                 var service = _crmService.GetService();
@@ -288,24 +304,24 @@ namespace TicketSystemApi.Controllers
                 }
 
                 // Validate and link Visitor (mandatory) Date - 29-10-25
-                if (string.IsNullOrWhiteSpace(model.VisitorId))
-                {
+               if (string.IsNullOrWhiteSpace(model.VisitorId))
+               {
                     return Content(HttpStatusCode.BadRequest,
                         ApiResponse<object>.Error("VisitorId is required."));
-                }
+               }
 
                Guid VisitorId;
                 try
-                {
-                    VisitorId = new Guid(model.VisitorId);
-                }
-                catch
-                {
-                    return Content(HttpStatusCode.BadRequest,
-                        ApiResponse<object>.Error("Invalid VisitorId format."));
-                }
+               {
+                   VisitorId = new Guid(model.VisitorId);
+               }
+               catch
+               {
+                   return Content(HttpStatusCode.BadRequest,
+                       ApiResponse<object>.Error("Invalid VisitorId format."));
+               }
 
-                // ✅ Link Visitor lookup field
+               // // ✅ Link Visitor lookup field
                feedback["new_satisfactionsurveyvisitor"] = new EntityReference("new_visitor", VisitorId);
 
 
