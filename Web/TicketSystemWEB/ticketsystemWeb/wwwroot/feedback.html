@@ -7,7 +7,6 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
-        /* ==== ORIGINAL STYLES KEPT ==== */
         body {
             background-color: #e8e6db;
             display: flex;
@@ -191,7 +190,6 @@
             }
         }
 
-        /* floating language selector (outside the card, top-right of screen) */
         .lang-floating {
             position: fixed;
             top: 20px;
@@ -204,25 +202,27 @@
             box-shadow: 0 3px 0 rgba(12, 83, 170, 0.04), 0 0 0 4px rgba(12,83,170,0.03) inset;
             min-width: 120px;
         }
-		.lang-pill {
-			background: #fff;
-			border-radius: 28px;
-			padding: 6px 14px;
-			border: 1px solid #d0d0d0;
-			box-shadow: 0 2px 4px rgba(0,0,0,0.08);
-			display: inline-block;
-		}
-		
-		.lang-pill select {
-			border: none;
-			background: transparent;
-			font-size: 14px;
-			font-weight: 500;
-			padding-right: 10px;
-			cursor: pointer;
-			appearance: none;
-			-webkit-appearance: none;
-		}
+
+        .lang-pill {
+            background: #fff;
+            border-radius: 28px;
+            padding: 6px 14px;
+            border: 1px solid #d0d0d0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+            display: inline-block;
+        }
+
+            .lang-pill select {
+                border: none;
+                background: transparent;
+                font-size: 14px;
+                font-weight: 500;
+                padding-right: 10px;
+                cursor: pointer;
+                appearance: none;
+                -webkit-appearance: none;
+            }
+
         .lang-floating select {
             border: none;
             background: transparent;
@@ -235,7 +235,6 @@
             cursor: pointer;
         }
 
-        /* mobile adjustments */
         @media (max-width: 576px) {
             .feedback-card {
                 padding: 20px 16px;
@@ -269,35 +268,34 @@
                 padding: 24px 16px;
             }
 
-            .lang-floating { min-width: 88px; padding: 6px 8px; right: 8px; top: 12px; }
+            .lang-floating {
+                min-width: 88px;
+                padding: 6px 8px;
+                right: 8px;
+                top: 12px;
+            }
         }
     </style>
-	<script>
-  // dev values — set to your API host and bearer token
-  window.ENV = {
-    DOMAIN: "https://localhost:44358",    // API base (no trailing slash)
-    TOKEN: "your-test-bearer-token"
-  };
-</script>
 
+    <script>
+        // Base URL for your Web API (CustomerController)
+        const apiBase = "https://localhost:44358";           // TODO: change port to your site
+        const apiBearerToken = "some-strong-random-token";   // SAME as ApiBearerToken in Web.config
+    </script>
 </head>
 <body>
 
-    <!-- Language selector OUTSIDE the card (floating top-right of screen) -->
     <!-- Floating language selector TOP RIGHT -->
-		<div class="lang-floating">
-			<div class="lang-pill">
-				<select id="languageSwitcherFloating">
-					<option value="ar">العربية SA ▼</option>
-					<option value="en">English US ▼</option>
-				</select>
-			</div>
-		</div>
-
+    <div class="lang-floating">
+        <div class="lang-pill">
+            <select id="languageSwitcherFloating">
+                <option value="ar">العربية SA ▼</option>
+                <option value="en" selected>English US ▼</option>
+            </select>
+        </div>
+    </div>
 
     <div id="formSection" class="feedback-card">
-        
-
         <h4 id="formTitle">Your Feedback</h4>
         <div class="ticket-number" id="ticketNumber">Loading ticket...</div>
 
@@ -313,7 +311,6 @@
             <span class="star" data-value="5">★</span>
         </div>
 
-        <!-- SINGLE COLUMN: All selects stacked -->
         <div class="mb-3 text-start" style="margin-top:8px;">
             <label class="form-label" id="lbl_overall">Overall, how satisfied are you with your experience?</label>
             <select id="overall" class="form-select" style="border-radius: 0.375rem; margin-bottom:10px;"></select>
@@ -334,7 +331,8 @@
             <select id="solution" class="form-select" style="border-radius: 0.375rem; margin-bottom:10px;"></select>
 
             <label class="form-label" for="comments" id="lbl_comments">Do you have any other suggestions and/or comments?</label>
-            <textarea class="form-control" id="comments" rows="4" placeholder="How can we improve the ticket processing experience? (Open-ended)"></textarea>
+            <textarea class="form-control" id="comments" rows="4"
+                      placeholder="How can we improve the ticket processing experience? (Open-ended)"></textarea>
         </div>
 
         <div class="footer-section">
@@ -368,33 +366,28 @@
     </div>
 
     <script>
-        // Replace these at build time or via window.ENV
-         const domain = window.ENV?.DOMAIN || "__DOMAIN__";
-         const token = window.ENV?.TOKEN || "__API_TOKEN__";
-
-        const apiVersion = 'v9.1';
-        const stars = document.querySelectorAll('.star');
+        const stars = document.querySelectorAll(".star");
         const urlParams = new URLSearchParams(window.location.search);
-       let ticketNumberRaw = urlParams.get("ticketNumber");
-		let ticketNumber = normalizeTicketNumber(ticketNumberRaw);
+        let ticketNumber = urlParams.get("ticketNumber");
 
-		
         let selectedRating = 0;
+        let incidentId = null;
+        let customerId = null;
+        let customerLogicalName = null;
 
         const options_en = [
             { value: 1, text: "Very satisfied" },
             { value: 2, text: "Satisfied" },
             { value: 3, text: "Neutral" },
             { value: 4, text: "Dissatisfied" },
-            { value: 5, text: "Very dissatisfied" },
+            { value: 5, text: "Very dissatisfied" }
         ];
-
         const options_ar = [
             { value: 1, text: "راضٍ جدًا" },
             { value: 2, text: "راضٍ" },
             { value: 3, text: "محايد" },
             { value: 4, text: "غير راضٍ" },
-            { value: 5, text: "غير راضٍ جدًا" },
+            { value: 5, text: "غير راضٍ جدًا" }
         ];
 
         const translations = {
@@ -437,41 +430,20 @@
                 loadingTicket: "جارٍ تحميل التذكرة..."
             }
         };
-		function normalizeTicketNumber(raw) {
-			if (!raw) return "";
-
-			raw = raw.trim().toUpperCase(); // Make uppercase
-
-			// If ticket is already in format KI-xxxxx
-			if (raw.startsWith("KI-")) {
-				let parts = raw.split("-");
-				let num = parts[1].padStart(5, "0"); // ensure 5 digits
-				return "KI-" + num;
-			}
-
-			// If user gave only digits (e.g., 1728)
-			if (/^\d+$/.test(raw)) {
-				let num = raw.padStart(5, "0");
-				return "KI-" + num;
-			}
-
-			// If user gave something invalid
-			return "";
-		}
 
         function fillOptions(lang) {
-            const opts = (lang === 'ar') ? options_ar : options_en;
-            ['overall','response_time','time_taken','professionalism','relationship','solution'].forEach(id => {
+            const opts = lang === "ar" ? options_ar : options_en;
+            ["overall", "response_time", "time_taken", "professionalism", "relationship", "solution"].forEach(id => {
                 const sel = document.getElementById(id);
-                sel.innerHTML = '';
-                const placeholder = document.createElement('option');
+                sel.innerHTML = "";
+                const placeholder = document.createElement("option");
                 placeholder.value = "";
                 placeholder.disabled = true;
                 placeholder.selected = true;
-                placeholder.innerText = (lang === 'ar') ? 'اختر...' : 'Select...';
+                placeholder.innerText = lang === "ar" ? "اختر..." : "Select...";
                 sel.appendChild(placeholder);
                 opts.forEach(o => {
-                    const op = document.createElement('option');
+                    const op = document.createElement("option");
                     op.value = o.value;
                     op.innerText = o.text;
                     sel.appendChild(op);
@@ -480,8 +452,8 @@
         }
 
         function setLanguage(lang) {
-            const t = translations[lang] || translations['en'];
-            document.querySelector("#formTitle").innerText = t.title;
+            const t = translations[lang] || translations.en;
+            document.getElementById("formTitle").innerText = t.title;
             document.getElementById("comments").placeholder = t.placeholder;
             document.getElementById("lbl_overall").innerText = t.q_overall_label;
             document.getElementById("lbl_response_time").innerText = t.q_response_time_label;
@@ -501,19 +473,19 @@
             fillOptions(lang);
         }
 
-        // connect the floating language select
-        const floatingLang = document.getElementById('languageSwitcherFloating');
-        // default to English to match your screenshot
-        floatingLang.value = 'en';
+        const floatingLang = document.getElementById("languageSwitcherFloating");
+        floatingLang.value = "en";
         setLanguage(floatingLang.value);
-        floatingLang.addEventListener('change', (e) => setLanguage(e.target.value));
+        floatingLang.addEventListener("change", e => setLanguage(e.target.value));
 
-        // stars UI
         stars.forEach(star => {
-            star.addEventListener('click', () => {
-                selectedRating = parseInt(star.getAttribute('data-value'));
+            star.addEventListener("click", () => {
+                selectedRating = parseInt(star.getAttribute("data-value"));
                 stars.forEach(s => {
-                    s.classList.toggle('selected', parseInt(s.getAttribute('data-value')) <= selectedRating);
+                    s.classList.toggle(
+                        "selected",
+                        parseInt(s.getAttribute("data-value")) <= selectedRating
+                    );
                 });
             });
         });
@@ -521,146 +493,164 @@
         function showLoader() { document.getElementById("loaderOverlay").style.display = "flex"; }
         function hideLoader() { document.getElementById("loaderOverlay").style.display = "none"; }
 
-        let incidentId = null;
-        let companyId = null;
-        let contactId = null;
-
-        function webApiHeaders() {
-            return {
-                "Authorization": `Bearer ${token}`,
-                "Content-Type": "application/json",
-                "OData-MaxVersion": "4.0",
-                "OData-Version": "4.0",
-                "Accept": "application/json"
-            };
-        }
-
-        // Load ticket & customer (non-blocking)
+        // Load ticket info from your API
         (function loadTicket() {
             if (!ticketNumber) {
-				document.getElementById("ticketNumber").innerText = 'Invalid Ticket Number';
-				document.getElementById("userName").innerText = '(Unknown)';
-				alert("Invalid ticket format. Ticket must be like KI-01728");
-				return;
-			}
-            fetch(`${domain}/api/data/${apiVersion}/incidents?$select=incidentid,ticketnumber,_customerid_value,_customerid_value@Microsoft.Dynamics.CRM.lookuplogicalname&$filter=${encodeURIComponent("ticketnumber eq '" + ticketNumber.replace("'", "''") + "'")}`, {
-                headers: webApiHeaders()
-            })
-            .then(r => r.json())
-            .then(response => {
-                if (!response.value || response.value.length === 0) {
-                    document.getElementById("ticketNumber").innerText = (document.body.dir === "rtl") ? 'رقم التذكرة: (غير موجود)' : 'Ticket Number: (Not Found)';
-                    document.getElementById("userName").innerText = '(Unknown)';
-                    return;
-                }
-                const rec = response.value[0];
-                incidentId = rec.incidentid;
-                const custLogical = rec["_customerid_value@Microsoft.Dynamics.CRM.lookuplogicalname"];
-                const custVal = rec._customerid_value;
-                document.getElementById("ticketNumber").innerText = `${translations[floatingLang.value || 'en'].ticketNumber}: ${rec.ticketnumber || ticketNumber}`;
+                document.getElementById("ticketNumber").innerText = "Invalid Ticket Number";
+                document.getElementById("userName").innerText = "(Unknown)";
+                return;
+            }
 
-                if (custLogical === 'account') {
-                    companyId = custVal;
-                    fetch(`${domain}/api/data/${apiVersion}/accounts(${companyId})?$select=name`, { headers: webApiHeaders() })
-                        .then(r => r.json()).then(j => {
-                            document.getElementById("companyName").innerText = j.name || '';
-                            document.getElementById("userName").innerText = j.name || '(Company)';
-                        }).catch(() => {});
-                } else if (custLogical === 'contact') {
-                    contactId = custVal;
-                    fetch(`${domain}/api/data/${apiVersion}/contacts(${contactId})?$select=fullname,firstname,lastname`, { headers: webApiHeaders() })
-                        .then(r => r.json()).then(j => {
-                            const name = j.fullname || `${j.firstname || ''} ${j.lastname || ''}`.trim();
-                            document.getElementById("companyName").innerText = '';
-                            document.getElementById("userName").innerText = name || '(Contact)';
-                        }).catch(() => {});
-                } else {
-                    document.getElementById("userName").innerText = '(Unknown)';
+            fetch(`${apiBase}/api/customer/ki-ticket/${encodeURIComponent(ticketNumber)}`, {
+                headers: {
+                    "Accept": "application/json",
+                    "Authorization": `Bearer ${apiBearerToken}`
                 }
             })
-            .catch(err => {
-                console.error("User info load error:", err);
-                document.getElementById("ticketNumber").innerText = (document.body.dir === "rtl") ? 'رقم التذكرة: (غير موجود)' : 'Ticket Number: (Not Found)';
-                document.getElementById("userName").innerText = '(Unknown)';
-            });
+                .then(r => r.json())
+                .then(json => {
+                    if (!json || !json.Success) {
+                        document.getElementById("ticketNumber").innerText =
+                            document.body.dir === "rtl"
+                                ? "رقم التذكرة: (غير موجود)"
+                                : "Ticket Number: (Not Found)";
+                        document.getElementById("userName").innerText = "(Unknown)";
+                        return;
+                    }
+
+                    const data = json.Data;
+                    incidentId = data.CaseId;
+                    customerId = data.CustomerId || null;
+                    customerLogicalName = data.CustomerLogicalName || null;
+
+                    document.getElementById("ticketNumber").innerText =
+                        `${translations[floatingLang.value || "en"].ticketNumber}: ${data.TicketNumber || ticketNumber}`;
+
+                    const name = data.CustomerName || "(Unknown)";
+                    document.getElementById("userName").innerText = name;
+                    document.getElementById("companyName").innerText = "";
+                })
+                .catch(err => {
+                    console.error("Ticket load error:", err);
+                    document.getElementById("ticketNumber").innerText =
+                        document.body.dir === "rtl"
+                            ? "رقم التذكرة: (غير موجود)"
+                            : "Ticket Number: (Not Found)";
+                    document.getElementById("userName").innerText = "(Unknown)";
+                });
         })();
 
-        // Submit handler
         document.getElementById("submitBtn").addEventListener("click", function () {
-            const overall = document.getElementById('overall').value;
-            const response_time = document.getElementById('response_time').value;
-            const time_taken = document.getElementById('time_taken').value;
-            const professionalism = document.getElementById('professionalism').value;
-            const relationship = document.getElementById('relationship').value;
-            const solution = document.getElementById('solution').value;
-            const comments = (document.getElementById('comments').value || '').trim();
+            const overall = document.getElementById("overall").value;
+            const response_time = document.getElementById("response_time").value;
+            const time_taken = document.getElementById("time_taken").value;
+            const professionalism = document.getElementById("professionalism").value;
+            const relationship = document.getElementById("relationship").value;
+            const solution = document.getElementById("solution").value;
+            const comments = (document.getElementById("comments").value || "").trim();
 
-            if (!overall) return alert((document.body.dir === "rtl") ? 'يرجى اختيار إجابة للسؤال العام.' : 'Please select an overall satisfaction.');
-            if (!incidentId) return alert((document.body.dir === "rtl") ? 'معرّف التذكرة مفقود، لا يمكن الإرسال.' : 'Cannot submit feedback. Case ID is missing.');
+            if (!overall) {
+                return alert(
+                    document.body.dir === "rtl"
+                        ? "يرجى اختيار إجابة للسؤال العام."
+                        : "Please select an overall satisfaction."
+                );
+            }
+            if (!incidentId) {
+                return alert(
+                    document.body.dir === "rtl"
+                        ? "معرّف التذكرة مفقود، لا يمكن الإرسال."
+                        : "Cannot submit feedback. Case ID is missing."
+                );
+            }
 
-            const payload = {
-                "new_satisfactionsurvey": comments || "",
-                "new_overallhowsatisfiedareyouwithyourexperien": overall ? parseInt(overall, 10) : null,
-                "new_howsatisfiedareyouwiththeresponsetimeofth": response_time ? parseInt(response_time, 10) : null,
-                "new_howsatisfiedareyouwiththetimetakentoresol": time_taken ? parseInt(time_taken, 10) : null,
-                "new_howsatisfiedareyouwiththeprofessionalismo": professionalism ? parseInt(professionalism, 10) : null,
-                "new_howsatisfiedareyouwiththerelationshipmana": relationship ? parseInt(relationship, 10) : null,
-                "new_howsatisfiedareyouwiththesolutionprovided": solution ? parseInt(solution, 10) : null
+            let timeAppropriate = 0;
+            if (time_taken) {
+                const tt = parseInt(time_taken, 10);
+                timeAppropriate = tt <= 3 ? 1 : 2;
+            }
+
+            const lang = floatingLang.value || "en";
+
+            const model = {
+                CaseId: incidentId ? incidentId.toString() : null,
+                TicketNumber: ticketNumber ? ticketNumber.toString() : null,
+                CustomerId: customerId ? customerId.toString() : null,
+                CustomerLogicalName: customerLogicalName,
+                Ratings: {
+                    "new_overallhowsatisfiedareyouwithyourexperien": overall ? parseInt(overall, 10) : 0,
+                    "new_howsatisfiedareyouwiththeresponsetimeofth": response_time ? parseInt(response_time, 10) : 0,
+                    "new_howsatisfiedareyouwiththetimetakentoresol": time_taken ? parseInt(time_taken, 10) : 0,
+                    "new_howsatisfiedareyouwiththeprofessionalismo": professionalism ? parseInt(professionalism, 10) : 0,
+                    "new_howsatisfiedareyouwiththerelationshipmana": relationship ? parseInt(relationship, 10) : 0,
+                    "new_howsatisfiedareyouwiththesolutionprovided": solution ? parseInt(solution, 10) : 0
+                },
+                TimeAppropriate: timeAppropriate,
+                Comment: comments || "No comments added by customer",
+                Lang: lang
             };
 
-            if (companyId) payload["new_company@odata.bind"] = `/accounts(${companyId})`;
-            if (contactId) payload["new_contact@odata.bind"] = `/contacts(${contactId})`;
-            if (incidentId) payload["new_ticket@odata.bind"] = `/incidents(${incidentId})`;
-
-            // optional: include star rating if you have a field (e.g. new_rating)
-            // payload["new_rating"] = selectedRating;
-
             showLoader();
-            fetch(`${domain}/api/data/${apiVersion}/new_satisfactionsurveys`, {
+            fetch(`${apiBase}/api/customer/submit-ki-feedback`, {
                 method: "POST",
-                headers: webApiHeaders(),
-                body: JSON.stringify(payload)
+                headers: {
+                    "Content-Type": "application/json",
+                    "Accept": "application/json",
+                    "Authorization": `Bearer ${apiBearerToken}`
+                },
+                body: JSON.stringify(model)
             })
-            .then(res => {
-                hideLoader();
-                if (res.status === 201 || res.status === 204) {
-                    document.getElementById("formSection").style.display = "none";
-                    document.getElementById("thankYouSection").style.display = "block";
-                    const duration = 3000;
-                    const end = Date.now() + duration;
-                    const defaults = { startVelocity: 35, spread: 360, ticks: 80, zIndex: 999 };
-                    try {
-                        const audio = new Audio("https://cdn.pixabay.com/audio/2022/03/15/audio_1cf9bdb735.mp3");
-                        audio.play().catch(() => {});
-                    } catch(e){}
-                    const interval = setInterval(() => {
-                        if (Date.now() > end) return clearInterval(interval);
-                        if (window.confetti) {
-                            confetti(Object.assign({}, defaults, {
-                                particleCount: 40,
-                                origin: { x: Math.random(), y: Math.random() - 0.2 }
-                            }));
-                        }
-                    }, 250);
-                } else {
-                    res.text().then(txt => {
-                        if ((txt || "").toLowerCase().includes("already")) {
-                            document.getElementById("formSection").style.display = "none";
-                            document.getElementById("errorSection").style.display = "block";
-                        } else {
-                            alert("❌ Error: " + (txt || res.status));
-                        }
-                    });
-                }
-            })
-            .catch(err => {
-                hideLoader();
-                console.error("Submit error:", err);
-                alert((document.body.dir === "rtl") ? "❌ تعذر إرسال الملاحظات. حاول مرة أخرى." : "❌ Could not submit feedback. Please try again.");
-            });
+                .then(async res => {
+                    const text = await res.text();
+                    let json = null;
+                    try { json = text ? JSON.parse(text) : null; } catch (e) { }
+
+                    hideLoader();
+
+                    if (res.ok && json && json.Success) {
+                        document.getElementById("formSection").style.display = "none";
+                        document.getElementById("thankYouSection").style.display = "block";
+
+                        const duration = 3000;
+                        const end = Date.now() + duration;
+                        const defaults = { startVelocity: 35, spread: 360, ticks: 80, zIndex: 999 };
+                        try {
+                            const audio = new Audio("https://cdn.pixabay.com/audio/2022/03/15/audio_1cf9bdb735.mp3");
+                            audio.play().catch(() => { });
+                        } catch (e) { }
+                        const interval = setInterval(() => {
+                            if (Date.now() > end) return clearInterval(interval);
+                            if (window.confetti) {
+                                confetti(Object.assign({}, defaults, {
+                                    particleCount: 40,
+                                    origin: { x: Math.random(), y: Math.random() - 0.2 }
+                                }));
+                            }
+                        }, 250);
+                    }
+                    else if (res.status === 409) {
+                        document.getElementById("formSection").style.display = "none";
+                        document.getElementById("errorSection").style.display = "block";
+                    }
+                    else {
+                        const msg =
+                            (json && json.Message) ||
+                            (json && json.message) ||
+                            text ||
+                            res.status;
+                        alert("❌ Error: " + msg);
+                    }
+                })
+                .catch(err => {
+                    hideLoader();
+                    console.error("Submit error:", err);
+                    alert(
+                        document.body.dir === "rtl"
+                            ? "❌ تعذر إرسال الملاحظات. حاول مرة أخرى."
+                            : "❌ Could not submit feedback. Please try again."
+                    );
+                });
         });
-
     </script>
-
 </body>
 </html>
