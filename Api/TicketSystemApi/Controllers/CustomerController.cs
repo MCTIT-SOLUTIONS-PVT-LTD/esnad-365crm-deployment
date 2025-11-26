@@ -347,6 +347,89 @@ namespace TicketSystemApi.Controllers
                 return Content(HttpStatusCode.InternalServerError, ApiResponse<object>.Error($"CRM error: {ex.Message}"));
             }
         }
+        // ==========  GET /api/customer/ki-ticket/{ticketNumber}  ==========
+        // Frontend calls this to display ticket header + customer name.
+        [HttpGet]
+        [Route("ki-ticket/{ticketNumber}")]
+        public IHttpActionResult GetTicket(string ticketNumber)
+        {
+            if (string.IsNullOrWhiteSpace(ticketNumber))
+                return Content(HttpStatusCode.BadRequest, ApiResponse<object>.Error("TicketNumber is required"));
+
+            try
+            {
+                var service = _crmService.GetService();
+                var normalized = NormalizeTicketNumber(ticketNumber);
+                if (string.IsNullOrWhiteSpace(normalized))
+                    return Content(HttpStatusCode.BadRequest,
+                        ApiResponse<object>.Error("TicketNumber must be numeric or KI-xxxxx"));
+
+                var q = new QueryExpression("incident")
+                {
+                    ColumnSet = new ColumnSet("incidentid", "ticketnumber", "customerid"),
+                    Criteria =
+                    {
+                        Conditions =
+                        {
+                            new ConditionExpression("ticketnumber", ConditionOperator.Equal, normalized)
+                        }
+                    }
+                };
+
+                var incidents = service.RetrieveMultiple(q);
+                if (!incidents.Entities.Any())
+                    return Content(HttpStatusCode.NotFound,
+                        ApiResponse<object>.Error($"Ticket Number not found: {normalized}"));
+
+                var inc = incidents.Entities.First();
+                var result = new
+                {
+                    CaseId = inc.Id,
+                    TicketNumber = inc.GetAttributeValue<string>("ticketnumber"),
+                    CustomerId = (Guid?)null,
+                    CustomerLogicalName = (string)null,
+                    CustomerName = (string)null
+                };
+
+                if (inc.Contains("customerid") && inc["customerid"] is EntityReference cre)
+                {
+                    var custId = cre.Id;
+                    var logical = cre.LogicalName;
+                    string custName = null;
+
+                    if (logical == "account")
+                    {
+                        var acc = service.Retrieve("account", custId, new ColumnSet("name"));
+                        custName = acc.GetAttributeValue<string>("name");
+                    }
+                    else if (logical == "contact")
+                    {
+                        var con = service.Retrieve("contact", custId, new ColumnSet("fullname", "firstname", "lastname"));
+                        custName = con.GetAttributeValue<string>("fullname")
+                                  ?? $"{con.GetAttributeValue<string>("firstname")} {con.GetAttributeValue<string>("lastname")}".Trim();
+                    }
+
+                    return Ok(ApiResponse<object>.Success(new
+                    {
+                        CaseId = inc.Id,
+                        TicketNumber = inc.GetAttributeValue<string>("ticketnumber"),
+                        CustomerId = custId,
+                        CustomerLogicalName = logical,
+                        CustomerName = custName
+                    }, "Ticket found"));
+                }
+
+                // no customer set
+                return Ok(ApiResponse<object>.Success(result, "Ticket found (no customer)"));
+            }
+            catch (Exception ex)
+            {
+                return Content(HttpStatusCode.InternalServerError,
+                    ApiResponse<object>.Error("CRM error (GetTicket): " + ex.Message));
+            }
+        }
+
+        // ==========  POST /api/customer/submit-ki-feedback  ==========
         [HttpPost]
         [Route("submit-ki-feedback")]
         public IHttpActionResult SubmitKIFeedback([FromBody] KICustomerFeedbackModel model)
@@ -368,17 +451,7 @@ namespace TicketSystemApi.Controllers
                 string normalizedTicket = null;
                 if (!string.IsNullOrWhiteSpace(model.TicketNumber))
                 {
-                    var raw = model.TicketNumber.Trim().ToUpper();
-                    if (raw.StartsWith("KI-"))
-                    {
-                        var parts = raw.Split(new[] { '-' }, 2);
-                        if (parts.Length >= 2 && System.Text.RegularExpressions.Regex.IsMatch(parts[1], @"^\d+$"))
-                            normalizedTicket = "KI-" + parts[1].PadLeft(5, '0');
-                    }
-                    else if (System.Text.RegularExpressions.Regex.IsMatch(raw, @"^\d+$"))
-                    {
-                        normalizedTicket = "KI-" + raw.PadLeft(5, '0');
-                    }
+                    normalizedTicket = NormalizeTicketNumber(model.TicketNumber);
                 }
 
                 // If CaseId provided, try to use it. Otherwise require ticket number normalized.
@@ -391,18 +464,25 @@ namespace TicketSystemApi.Controllers
                 else
                 {
                     if (string.IsNullOrWhiteSpace(normalizedTicket))
-                        return Content(HttpStatusCode.BadRequest, ApiResponse<object>.Error("TicketNumber is required and must be numeric or KI-xxxxx"));
+                        return Content(HttpStatusCode.BadRequest,
+                            ApiResponse<object>.Error("TicketNumber is required and must be numeric or KI-xxxxx"));
 
-                    // query incident by ticketnumber
                     var q = new QueryExpression("incident")
                     {
                         ColumnSet = new ColumnSet("incidentid", "ticketnumber", "customerid"),
-                        Criteria = { Conditions = { new ConditionExpression("ticketnumber", ConditionOperator.Equal, normalizedTicket) } }
+                        Criteria =
+                        {
+                            Conditions =
+                            {
+                                new ConditionExpression("ticketnumber", ConditionOperator.Equal, normalizedTicket)
+                            }
+                        }
                     };
 
                     var incidents = service.RetrieveMultiple(q);
                     if (incidents.Entities.Count == 0)
-                        return Content(HttpStatusCode.NotFound, ApiResponse<object>.Error($"Ticket Number not found: {normalizedTicket}"));
+                        return Content(HttpStatusCode.NotFound,
+                            ApiResponse<object>.Error($"Ticket Number not found: {normalizedTicket}"));
 
                     var inc = incidents.Entities.First();
                     incidentId = inc.Id;
@@ -418,17 +498,26 @@ namespace TicketSystemApi.Controllers
                 var dupQ = new QueryExpression("new_satisfactionsurvey")
                 {
                     ColumnSet = new ColumnSet("new_satisfactionsurveyid"),
-                    Criteria = { Conditions = { new ConditionExpression("new_ticket", ConditionOperator.Equal, incidentId) } }
+                    Criteria =
+                    {
+                        Conditions =
+                        {
+                            new ConditionExpression("new_ticket", ConditionOperator.Equal, incidentId)
+                        }
+                    }
                 };
                 var dupRes = service.RetrieveMultiple(dupQ);
                 if (dupRes.Entities.Any())
-                    return Content(HttpStatusCode.Conflict, ApiResponse<object>.Error("Feedback already submitted for this ticket."));
+                    return Content(HttpStatusCode.Conflict,
+                        ApiResponse<object>.Error("Feedback already submitted for this ticket."));
 
                 // Build feedback record
                 var feedback = new Entity("new_satisfactionsurvey");
 
                 // map comment/text fields
-                var comment = string.IsNullOrWhiteSpace(model.Comment) ? "No comments added by customer" : model.Comment.Trim();
+                var comment = string.IsNullOrWhiteSpace(model.Comment)
+                    ? "No comments added by customer"
+                    : model.Comment.Trim();
                 feedback["new_satisfactionsurvey"] = comment;
                 feedback["new_doyouhaveanyothersuggestionsandorcomments"] = comment;
 
@@ -444,26 +533,28 @@ namespace TicketSystemApi.Controllers
                     }
                 }
 
-                // optional: map TimeAppropriate if you have a field (example boolean)
-                // If your CRM field is boolean, uncomment and adapt name:
-                 feedback["new_wasthetimetakentoprocesstheticketappropri"] = (model.TimeAppropriate == 1);
+                // optional: map TimeAppropriate if you have an OptionSet
+                // adjust options to your metadata
+                if (model.TimeAppropriate == 1 || model.TimeAppropriate == 2)
+                {
+                    feedback["new_wasthetimetakentoprocesstheticketappropri"] =
+                        new OptionSetValue(model.TimeAppropriate);
+                }
 
                 // Attach lookups
                 if (incidentId != Guid.Empty)
                     feedback["new_ticket"] = new EntityReference("incident", incidentId);
 
-                if (!string.IsNullOrWhiteSpace(model.CustomerId) && !string.IsNullOrWhiteSpace(model.CustomerLogicalName))
+                if (!string.IsNullOrWhiteSpace(model.CustomerId) &&
+                    !string.IsNullOrWhiteSpace(model.CustomerLogicalName) &&
+                    Guid.TryParse(model.CustomerId, out Guid custGuid))
                 {
-                    if (Guid.TryParse(model.CustomerId, out Guid custGuid))
-                    {
-                        if (model.CustomerLogicalName.Equals("account", StringComparison.OrdinalIgnoreCase))
-                            feedback["new_company"] = new EntityReference("account", custGuid);
-                        else if (model.CustomerLogicalName.Equals("contact", StringComparison.OrdinalIgnoreCase))
-                            feedback["new_contact"] = new EntityReference("contact", custGuid);
-                    }
+                    if (model.CustomerLogicalName.Equals("account", StringComparison.OrdinalIgnoreCase))
+                        feedback["new_company"] = new EntityReference("account", custGuid);
+                    else if (model.CustomerLogicalName.Equals("contact", StringComparison.OrdinalIgnoreCase))
+                        feedback["new_contact"] = new EntityReference("contact", custGuid);
                 }
 
-                // create and return
                 var createdId = service.Create(feedback);
 
                 return Ok(ApiResponse<object>.Success(new
@@ -475,10 +566,37 @@ namespace TicketSystemApi.Controllers
             }
             catch (Exception ex)
             {
-                return Content(HttpStatusCode.InternalServerError, ApiResponse<object>.Error($"CRM error: {ex.Message}"));
+                return Content(HttpStatusCode.InternalServerError,
+                    ApiResponse<object>.Error($"CRM error: {ex.Message}"));
             }
         }
 
+        private object GetService()
+        {
+            throw new NotImplementedException();
+        }
+
+        private string NormalizeTicketNumber(string rawInput)
+        {
+            if (string.IsNullOrWhiteSpace(rawInput)) return null;
+
+            var raw = rawInput.Trim().ToUpper();
+            if (raw.StartsWith("KI-"))
+            {
+                var parts = raw.Split(new[] { '-' }, 2);
+                if (parts.Length >= 2 &&
+                    System.Text.RegularExpressions.Regex.IsMatch(parts[1], @"^\d+$"))
+                {
+                    return "KI-" + parts[1].PadLeft(5, '0');
+                }
+            }
+            else if (System.Text.RegularExpressions.Regex.IsMatch(raw, @"^\d+$"))
+            {
+                return "KI-" + raw.PadLeft(5, '0');
+            }
+
+            return null;
+        }
         [HttpGet]
         [Route("by-visitor-number/{visitorNumber}")]
         public IHttpActionResult GetCustomerByVisitorNumber(string visitorNumber)
