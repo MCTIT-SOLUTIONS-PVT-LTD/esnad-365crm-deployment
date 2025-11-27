@@ -278,9 +278,12 @@
     </style>
 
     <script>
-        // Base URL for your Web API (CustomerController)
-        const apiBase = "https://localhost:44358";           // TODO: change port to your site
-        const apiBearerToken = "some-strong-random-token";   // SAME as ApiBearerToken in Web.config
+        // 🔹 Base URL for your Web API (CustomerController)
+        // Example: "https://localhost:44358" OR "https://yourserver.com"
+        const apiBase = "https://localhost:44358";
+
+        // 🔹 Must match <add key="ApiBearerToken" value="..."/> in Web.config
+        const apiBearerToken = "your-real-token-here";
     </script>
 </head>
 <body>
@@ -493,7 +496,7 @@
         function showLoader() { document.getElementById("loaderOverlay").style.display = "flex"; }
         function hideLoader() { document.getElementById("loaderOverlay").style.display = "none"; }
 
-        // Load ticket info from your API
+        // Load ticket info from your API  ->  GET /customers/ki-ticket/{ticketNumber}
         (function loadTicket() {
             if (!ticketNumber) {
                 document.getElementById("ticketNumber").innerText = "Invalid Ticket Number";
@@ -501,7 +504,7 @@
                 return;
             }
 
-            fetch(`${apiBase}/api/customer/ki-ticket/${encodeURIComponent(ticketNumber)}`, {
+            fetch(`${apiBase}/customers/ki-ticket/${encodeURIComponent(ticketNumber)}`, {
                 headers: {
                     "Accept": "application/json",
                     "Authorization": `Bearer ${apiBearerToken}`
@@ -509,7 +512,8 @@
             })
                 .then(r => r.json())
                 .then(json => {
-                    if (!json || !json.Success) {
+                    const ok = json && (json.Success === true || json.Status === "success");
+                    if (!ok) {
                         document.getElementById("ticketNumber").innerText =
                             document.body.dir === "rtl"
                                 ? "رقم التذكرة: (غير موجود)"
@@ -591,7 +595,9 @@
             };
 
             showLoader();
-            fetch(`${apiBase}/api/customer/submit-ki-feedback`, {
+
+            // POST /customers/submit-ki-feedback
+            fetch(`${apiBase}/customers/submit-ki-feedback`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -607,7 +613,9 @@
 
                     hideLoader();
 
-                    if (res.ok && json && json.Success) {
+                    const ok = json && (json.Success === true || json.Status === "success");
+
+                    if (res.ok && ok) {
                         document.getElementById("formSection").style.display = "none";
                         document.getElementById("thankYouSection").style.display = "block";
 
@@ -634,8 +642,7 @@
                     }
                     else {
                         const msg =
-                            (json && json.Message) ||
-                            (json && json.message) ||
+                            (json && (json.Message || json.message)) ||
                             text ||
                             res.status;
                         alert("❌ Error: " + msg);
