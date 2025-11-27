@@ -278,12 +278,12 @@
     </style>
 
     <script>
-        // 🔹 Base URL for your Web API (CustomerController)
-        // Example: "https://localhost:44358" OR "https://yourserver.com"
-        const apiBase = "https://localhost:44358";
+        // ✅ Domain & token – overridable via window.ENV
+        const domain = (window.ENV && window.ENV.DOMAIN) || "https://devapi.crm-esnad.com";
+        const token = (window.ENV && window.ENV.TOKEN) || "Kh4JBCqfGKYwwhSaJtbu95kxhO5LmLfXO1UGM6falBaX3sa0LvXeBQOD29SiwZoG";
 
-        // 🔹 Must match <add key="ApiBearerToken" value="..."/> in Web.config
-        const apiBearerToken = "your-real-token-here";
+        console.log("domain := " + domain);
+        console.log("token := " + token);
     </script>
 </head>
 <body>
@@ -496,7 +496,7 @@
         function showLoader() { document.getElementById("loaderOverlay").style.display = "flex"; }
         function hideLoader() { document.getElementById("loaderOverlay").style.display = "none"; }
 
-        // Load ticket info from your API  ->  GET /customers/ki-ticket/{ticketNumber}
+        // === Load ticket info from API: GET /customers/ki-ticket/{ticketNumber}
         (function loadTicket() {
             if (!ticketNumber) {
                 document.getElementById("ticketNumber").innerText = "Invalid Ticket Number";
@@ -504,10 +504,10 @@
                 return;
             }
 
-            fetch(`${apiBase}/customers/ki-ticket/${encodeURIComponent(ticketNumber)}`, {
+            fetch(`${domain}/customers/ki-ticket/${encodeURIComponent(ticketNumber)}`, {
                 headers: {
                     "Accept": "application/json",
-                    "Authorization": `Bearer ${apiBearerToken}`
+                    "Authorization": `Bearer ${token}`
                 }
             })
                 .then(r => r.json())
@@ -544,6 +544,7 @@
                 });
         })();
 
+        // === Submit feedback: POST /customers/submit-ki-feedback
         document.getElementById("submitBtn").addEventListener("click", function () {
             const overall = document.getElementById("overall").value;
             const response_time = document.getElementById("response_time").value;
@@ -596,13 +597,12 @@
 
             showLoader();
 
-            // POST /customers/submit-ki-feedback
-            fetch(`${apiBase}/customers/submit-ki-feedback`, {
+            fetch(`${domain}/customers/submit-ki-feedback`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                     "Accept": "application/json",
-                    "Authorization": `Bearer ${apiBearerToken}`
+                    "Authorization": `Bearer ${token}`
                 },
                 body: JSON.stringify(model)
             })
