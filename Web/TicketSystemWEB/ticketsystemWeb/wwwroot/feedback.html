@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Your Feedback</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        body {
+            background-color: #e8e6db;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Segoe UI', sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .feedback-card {
+            background: #fff;
+            border-radius: 24px;
+            padding: 24px;
+            width: 100%;
+            max-width: 540px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+            text-align: center;
+            position: relative;
+        }
+
+        .ticket-number {
+            font-size: 14px;
+            color: #555;
+            background: #f0f0f0;
+            border-radius: 12px;
+            display: inline-block;
+            padding: 6px 14px;
+            margin-top: 10px;
+            margin-bottom: 8px;
+            word-break: break-word;
+        }
+
+        .helper-text {
+            font-size: 14px;
+            color: #777;
+            margin-bottom: 10px;
+        }
+
+        .star-rating {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            font-size: 36px;
+            margin: 20px 0;
+            cursor: pointer;
+            flex-wrap: wrap;
+        }
+
+        .star {
+            color: #ccc;
+            transition: color 0.2s;
+        }
+
+            .star.selected {
+                color: #ffc107;
+            }
+
+        textarea {
+            border-radius: 12px;
+            resize: none;
+            font-size: 14px;
+            padding: 15px;
+            width: 100%;
+        }
+
+        .footer-section {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 20px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+            .user-info img {
+                width: 32px;
+                height: 32px;
+                border-radius: 50%;
+            }
+
+        .user-name {
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .btn-submit {
+            background-color: #12988b;
+            border: none;
+            padding: 10px 24px;
+            border-radius: 30px;
+            color: white;
+            font-weight: 500;
+            transition: background 0.3s;
+        }
+
+            .btn-submit:hover {
+                background-color: #00796b;
+            }
+
+        #thankYouSection, #errorSection {
+            display: none;
+            background-color: #fff8e6;
+            max-width: 540px;
+            margin: auto;
+            padding: 30px 24px;
+            border-radius: 24px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            animation: fadeInUp 0.6s ease-out;
+            text-align: center;
+        }
+
+        #thankYouSection {
+            animation: pulse 2s infinite;
+            box-shadow: 0 0 40px rgba(255, 223, 0, 0.3);
+        }
+
+            #thankYouSection .emoji {
+                font-size: 2.5rem;
+                margin-bottom: 10px;
+                animation: bounce 0.8s infinite alternate;
+            }
+
+        #errorSection h4 {
+            color: #e53935;
+        }
+
+        #loaderOverlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(255, 255, 255, 0.85);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes bounce {
+            from {
+                transform: translateY(0px);
+            }
+
+            to {
+                transform: translateY(-8px);
+            }
+        }
+
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0px rgba(255, 223, 0, 0.5);
+            }
+
+            50% {
+                box-shadow: 0 0 30px rgba(255, 223, 0, 1);
+            }
+
+            100% {
+                box-shadow: 0 0 0px rgba(255, 223, 0, 0.5);
+            }
+        }
+
+        .lang-floating {
+            position: fixed;
+            top: 20px;
+            right: 25px;
+            z-index: 2000;
+            background: #fff;
+            border-radius: 28px;
+            padding: 6px 12px;
+            border: 1px solid rgba(0,120,200,0.12);
+            box-shadow: 0 3px 0 rgba(12, 83, 170, 0.04), 0 0 0 4px rgba(12,83,170,0.03) inset;
+            min-width: 120px;
+        }
+
+        .lang-pill {
+            background: #fff;
+            border-radius: 28px;
+            padding: 6px 14px;
+            border: 1px solid #d0d0d0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+            display: inline-block;
+        }
+
+            .lang-pill select {
+                border: none;
+                background: transparent;
+                font-size: 14px;
+                font-weight: 500;
+                padding-right: 10px;
+                cursor: pointer;
+                appearance: none;
+                -webkit-appearance: none;
+            }
+
+        .lang-floating select {
+            border: none;
+            background: transparent;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            padding-right: 18px;
+            font-size: 13px;
+            width: 100%;
+            cursor: pointer;
+        }
+
+        @media (max-width: 576px) {
+            .feedback-card {
+                padding: 20px 16px;
+                border-radius: 16px;
+            }
+
+            .star-rating {
+                font-size: 28px;
+                gap: 6px;
+            }
+
+            .footer-section {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .btn-submit {
+                width: 100%;
+            }
+
+            .user-info {
+                justify-content: center;
+            }
+
+            .ticket-number {
+                font-size: 13px;
+                padding: 5px 10px;
+            }
+
+            #thankYouSection, #errorSection {
+                padding: 24px 16px;
+            }
+
+            .lang-floating {
+                min-width: 88px;
+                padding: 6px 8px;
+                right: 8px;
+                top: 12px;
+            }
+        }
+    </style>
+
+    <script>
+        // ✅ Domain & token – overridable via window.ENV
+        //const domain = (window.ENV && window.ENV.DOMAIN) || "https://devapi.crm-esnad.com";
+        //const token  = (window.ENV && window.ENV.TOKEN)  || "Kh4JBCqfGKYwwhSaJtbu95kxhO5LmLfXO1UGM6falBaX3sa0LvXeBQOD29SiwZoG";
+
+        // ✅ Replace these at build time in GitHub Actions
+        const domain = window.ENV?.DOMAIN || "https://devapi.crm-esnad.com";
+        const token = window.ENV?.TOKEN || "Kh4JBCqfGKYwwhSaJtbu95kxhO5LmLfXO1UGM6falBaX3sa0LvXeBQOD29SiwZoG";
+
+        console.log("domain := " + domain);
+        console.log("token := " + token);
+    </script>
+</head>
+<body>
+
+    <!-- Floating language selector TOP RIGHT -->
+    <div class="lang-floating">
+        <div class="lang-pill">
+            <select id="languageSwitcherFloating">
+                <option value="ar">العربية SA ▼</option>
+                <option value="en" selected>English US ▼</option>
+            </select>
+        </div>
+    </div>
+
+    <div id="formSection" class="feedback-card">
+        <h4 id="formTitle">Your Feedback</h4>
+        <div class="ticket-number" id="ticketNumber">Loading ticket...</div>
+
+        <label id="starLabel" class="form-label mb-0" style="display:block;">
+            How satisfied are you with how the ticket was handled? (Scale 1–5)
+        </label>
+
+        <div class="star-rating mt-0" id="starContainer">
+            <span class="star" data-value="1">★</span>
+            <span class="star" data-value="2">★</span>
+            <span class="star" data-value="3">★</span>
+            <span class="star" data-value="4">★</span>
+            <span class="star" data-value="5">★</span>
+        </div>
+
+        <div class="mb-3 text-start" style="margin-top:8px;">
+            <label class="form-label" id="lbl_overall">Overall, how satisfied are you with your experience?</label>
+            <select id="overall" class="form-select" style="border-radius: 0.375rem; margin-bottom:10px;"></select>
+
+            <label class="form-label" id="lbl_response_time">How satisfied are you with the response time of the team?</label>
+            <select id="response_time" class="form-select" style="border-radius: 0.375rem; margin-bottom:10px;"></select>
+
+            <label class="form-label" id="lbl_time_taken">How satisfied are you with the time taken to resolve your request?</label>
+            <select id="time_taken" class="form-select" style="border-radius: 0.375rem; margin-bottom:10px;"></select>
+
+            <label class="form-label" id="lbl_professionalism">How satisfied are you with the professionalism of the Relationship Manager?</label>
+            <select id="professionalism" class="form-select" style="border-radius: 0.375rem; margin-bottom:10px;"></select>
+
+            <label class="form-label" id="lbl_relationship">How satisfied are you with the Relationship Manager?</label>
+            <select id="relationship" class="form-select" style="border-radius: 0.375rem; margin-bottom:10px;"></select>
+
+            <label class="form-label" id="lbl_solution">How satisfied are you with the solution provided to you?</label>
+            <select id="solution" class="form-select" style="border-radius: 0.375rem; margin-bottom:10px;"></select>
+
+            <label class="form-label" for="comments" id="lbl_comments">Do you have any other suggestions and/or comments?</label>
+            <textarea class="form-control" id="comments" rows="4"
+                      placeholder="How can we improve the ticket processing experience? (Open-ended)"></textarea>
+        </div>
+
+        <div class="footer-section">
+            <div class="user-info">
+                <img src="https://cdn-icons-png.flaticon.com/512/921/921347.png" alt="User Avatar">
+                <div>
+                    <div class="user-name" id="userName">Loading user...</div>
+                    <div style="font-size:12px;color:#777;" id="companyName">&nbsp;</div>
+                </div>
+            </div>
+            <button class="btn-submit" id="submitBtn">Submit</button>
+        </div>
+    </div>
+
+    <div id="thankYouSection">
+        <div class="emoji">🎉</div>
+        <h4 id="thankYouTitle">Thank You!</h4>
+        <p id="thankYouText">Your feedback has been submitted successfully.</p>
+    </div>
+
+    <div id="errorSection">
+        <div class="emoji">❌</div>
+        <h4 id="errorTitle">Feedback Already Submitted</h4>
+        <p id="errorText">You have already provided feedback for this ticket. Thank you!</p>
+    </div>
+
+    <div id="loaderOverlay">
+        <div class="spinner-border text-success" style="width: 3rem; height: 3rem;" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+
+    <script>
+        const stars = document.querySelectorAll(".star");
+        const urlParams = new URLSearchParams(window.location.search);
+       // const urlParams = new URLSearchParams(window.location.search);
+        console.log("Full QueryString Raw =>", window.location.search);
+        console.log("URL Params Object =>", urlParams);
+        console.log("ticketNumber Param =>", urlParams.get("ticketNumber"));
+        console.log("ticketnumber Param =>", urlParams.get("ticketnumber"));
+        console.log("ALL Values =>", [...urlParams.entries()]);
+
+       // let ticketNumber = urlParams.get("ticketNumber");
+        // Read any version (case-insensitive)
+        let ticketNumberRaw =
+            urlParams.get("ticketNumber") ||
+            urlParams.get("ticketnumber") ||
+            urlParams.get("TicketNumber") ||
+            urlParams.get("TICKETNUMBER");
+
+        // Normalize → remove spaces + keep ONLY 0–9 digits
+        let ticketNumber = "";
+        if (ticketNumberRaw) {
+            ticketNumber = (ticketNumberRaw.match(/\d+/g) || []).join("");
+            // ex: "KI-01800" → "01800"
+        }
+
+        console.log("RAW VALUE FROM URL:", ticketNumberRaw);
+        console.log("CLEAN NUMERIC TICKET:", ticketNumber);
+
+
+
+        let selectedRating = 0;
+        let incidentId = null;
+        let customerId = null;
+        let customerLogicalName = null;
+
+        const options_en = [
+            { value: 1, text: "Very satisfied" },
+            { value: 2, text: "Satisfied" },
+            { value: 3, text: "Neutral" },
+            { value: 4, text: "Dissatisfied" },
+            { value: 5, text: "Very dissatisfied" }
+        ];
+        const options_ar = [
+            { value: 1, text: "راضٍ جدًا" },
+            { value: 2, text: "راضٍ" },
+            { value: 3, text: "محايد" },
+            { value: 4, text: "غير راضٍ" },
+            { value: 5, text: "غير راضٍ جدًا" }
+        ];
+
+        const translations = {
+            en: {
+                title: "Your Feedback",
+                ticketNumber: "Ticket Number",
+                placeholder: "How can we improve the ticket processing experience?",
+                submit: "Submit",
+                thankYouTitle: "Thank You!",
+                thankYouText: "Your feedback has been submitted successfully.",
+                alreadySubmittedTitle: "Feedback Already Submitted",
+                alreadySubmittedText: "You have already provided feedback for this ticket. Thank you!",
+                starLabel: "How satisfied are you with how the ticket was handled? (Scale 1–5)",
+                q_overall_label: "Overall, how satisfied are you with your experience?",
+                q_response_time_label: "How satisfied are you with the response time of the team?",
+                q_time_taken_label: "How satisfied are you with the time taken to resolve your request?",
+                q_professionalism_label: "How satisfied are you with the professionalism of the Relationship Manager?",
+                q_relationship_label: "How satisfied are you with the Relationship Manager?",
+                q_solution_label: "How satisfied are you with the solution provided to you?",
+                q_comments_label: "Do you have any other suggestions and/or comments?",
+                loadingTicket: "Loading ticket..."
+            },
+            ar: {
+                title: "ملاحظاتك",
+                ticketNumber: "رقم التذكرة",
+                placeholder: "كيف يمكننا تحسين تجربة معالجة التذاكر؟ ",
+                submit: "إرسال",
+                thankYouTitle: "شكرًا لك!",
+                thankYouText: "تم إرسال ملاحظاتك بنجاح.",
+                alreadySubmittedTitle: "تم إرسال الملاحظات مسبقًا",
+                alreadySubmittedText: "لقد قدمت ملاحظاتك بالفعل لهذه التذكرة. شكرًا لك!",
+                starLabel: "ما مدى رضاك عن معالجة التذكرة؟ (مقياس 5-1)",
+                q_overall_label: "بشكل عام، ما مدى رضاك عن تجربتك؟",
+                q_response_time_label: "ما مدى رضاك عن وقت استجابة الفريق؟",
+                q_time_taken_label: "ما مدى رضاك عن الوقت المستغرق لحل طلبك؟",
+                q_professionalism_label: "ما مدى رضاك عن احترافية مدير العلاقة؟",
+                q_relationship_label: "ما مدى رضاك عن مدير العلاقة؟",
+                q_solution_label: "ما مدى رضاك عن الحل المقدم لك؟",
+                q_comments_label: "هل لديك أي اقتراحات و/أو تعليقات أخرى؟",
+                loadingTicket: "جارٍ تحميل التذكرة..."
+            }
+        };
+
+        function fillOptions(lang) {
+            const opts = lang === "ar" ? options_ar : options_en;
+            ["overall", "response_time", "time_taken", "professionalism", "relationship", "solution"].forEach(id => {
+                const sel = document.getElementById(id);
+                sel.innerHTML = "";
+                const placeholder = document.createElement("option");
+                placeholder.value = "";
+                placeholder.disabled = true;
+                placeholder.selected = true;
+                placeholder.innerText = lang === "ar" ? "اختر..." : "Select...";
+                sel.appendChild(placeholder);
+                opts.forEach(o => {
+                    const op = document.createElement("option");
+                    op.value = o.value;
+                    op.innerText = o.text;
+                    sel.appendChild(op);
+                });
+            });
+        }
+
+        function setLanguage(lang) {
+            const t = translations[lang] || translations.en;
+            document.getElementById("formTitle").innerText = t.title;
+            document.getElementById("comments").placeholder = t.placeholder;
+            document.getElementById("lbl_overall").innerText = t.q_overall_label;
+            document.getElementById("lbl_response_time").innerText = t.q_response_time_label;
+            document.getElementById("lbl_time_taken").innerText = t.q_time_taken_label;
+            document.getElementById("lbl_professionalism").innerText = t.q_professionalism_label;
+            document.getElementById("lbl_relationship").innerText = t.q_relationship_label;
+            document.getElementById("lbl_solution").innerText = t.q_solution_label;
+            document.getElementById("lbl_comments").innerText = t.q_comments_label;
+            document.getElementById("submitBtn").innerText = t.submit;
+            document.getElementById("thankYouTitle").innerText = t.thankYouTitle;
+            document.getElementById("thankYouText").innerText = t.thankYouText;
+            document.getElementById("errorTitle").innerText = t.alreadySubmittedTitle;
+            document.getElementById("errorText").innerText = t.alreadySubmittedText;
+            document.getElementById("starLabel").innerText = t.starLabel;
+            document.getElementById("ticketNumber").innerText = t.loadingTicket;
+            document.body.dir = lang === "ar" ? "rtl" : "ltr";
+            fillOptions(lang);
+        }
+
+        const floatingLang = document.getElementById("languageSwitcherFloating");
+        floatingLang.value = "en";
+        setLanguage(floatingLang.value);
+        floatingLang.addEventListener("change", e => setLanguage(e.target.value));
+
+        stars.forEach(star => {
+            star.addEventListener("click", () => {
+                selectedRating = parseInt(star.getAttribute("data-value"));
+                stars.forEach(s => {
+                    s.classList.toggle(
+                        "selected",
+                        parseInt(s.getAttribute("data-value")) <= selectedRating
+                    );
+                });
+            });
+        });
+
+        function showLoader() { document.getElementById("loaderOverlay").style.display = "flex"; }
+        function hideLoader() { document.getElementById("loaderOverlay").style.display = "none"; }
+
+        // === Load ticket info from API: GET /customers/ki-ticket/{ticketNumber}
+        (function loadTicket() {
+           
+            fetch(`${domain}/customers/ki-ticket/${encodeURIComponent(ticketNumber)}`, {
+                headers: {
+                    "Accept": "application/json",
+                    "Authorization": `Bearer ${token}`
+                }
+            })
+                .then(r => r.json())
+                .then(json => {
+                    const ok = json && (json.Success === true || json.Status === "success");
+                    if (!ok) {
+                        document.getElementById("ticketNumber").innerText =
+                            document.body.dir === "rtl"
+                                ? "رقم التذكرة: (غير موجود)"
+                                : "Ticket Number: (Not Found)";
+                        document.getElementById("userName").innerText = "(Unknown)";
+                        return;
+                    }
+
+                    const data = json.Data;
+                    incidentId = data.CaseId;
+                    customerId = data.CustomerId || null;
+                    customerLogicalName = data.CustomerLogicalName || null;
+
+                    document.getElementById("ticketNumber").innerText =
+                        `${translations[floatingLang.value || "en"].ticketNumber}: ${data.TicketNumber || ticketNumber}`;
+
+                    const name = data.CustomerName || "(Unknown)";
+                    document.getElementById("userName").innerText = name;
+                    document.getElementById("companyName").innerText = "";
+                })
+                .catch(err => {
+                    console.error("Ticket load error:", err);
+                    document.getElementById("ticketNumber").innerText =
+                        document.body.dir === "rtl"
+                            ? "رقم التذكرة: (غير موجود)"
+                            : "Ticket Number: (Not Found)";
+                    document.getElementById("userName").innerText = "(Unknown)";
+                });
+        })();
+
+        // === Submit feedback: POST /customers/submit-ki-feedback
+        document.getElementById("submitBtn").addEventListener("click", function () {
+            const overall = document.getElementById("overall").value;
+            const response_time = document.getElementById("response_time").value;
+            const time_taken = document.getElementById("time_taken").value;
+            const professionalism = document.getElementById("professionalism").value;
+            const relationship = document.getElementById("relationship").value;
+            const solution = document.getElementById("solution").value;
+            const comments = (document.getElementById("comments").value || "").trim();
+
+            if (!overall) {
+                return alert(
+                    document.body.dir === "rtl"
+                        ? "يرجى اختيار إجابة للسؤال العام."
+                        : "Please select an overall satisfaction."
+                );
+            }
+            if (!incidentId) {
+                return alert(
+                    document.body.dir === "rtl"
+                        ? "معرّف التذكرة مفقود، لا يمكن الإرسال."
+                        : "Cannot submit feedback. Case ID is missing."
+                );
+            }
+
+            let timeAppropriate = 0;
+            if (time_taken) {
+                const tt = parseInt(time_taken, 10);
+                timeAppropriate = tt <= 3 ? 1 : 2;
+            }
+
+            const lang = floatingLang.value || "en";
+
+            const model = {
+                CaseId: incidentId ? incidentId.toString() : null,
+                TicketNumber: ticketNumber ? ticketNumber.toString() : null,
+                CustomerId: customerId ? customerId.toString() : null,
+                CustomerLogicalName: customerLogicalName,
+                Ratings: {
+                    "new_overallhowsatisfiedareyouwithyourexperien": overall ? parseInt(overall, 10) : 0,
+                    "new_howsatisfiedareyouwiththeresponsetimeofth": response_time ? parseInt(response_time, 10) : 0,
+                    "new_howsatisfiedareyouwiththetimetakentoresol": time_taken ? parseInt(time_taken, 10) : 0,
+                    "new_howsatisfiedareyouwiththeprofessionalismo": professionalism ? parseInt(professionalism, 10) : 0,
+                    "new_howsatisfiedareyouwiththerelationshipmana": relationship ? parseInt(relationship, 10) : 0,
+                    "new_howsatisfiedareyouwiththesolutionprovided": solution ? parseInt(solution, 10) : 0
+                },
+                TimeAppropriate: timeAppropriate,
+                Comment: comments || "No comments added by customer",
+                Lang: lang
+            };
+
+            showLoader();
+
+            fetch(`${domain}/customers/submit-ki-feedback`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Accept": "application/json",
+                    "Authorization": `Bearer ${token}`
+                },
+                body: JSON.stringify(model)
+            })
+                .then(async res => {
+                    const text = await res.text();
+                    let json = null;
+                    try { json = text ? JSON.parse(text) : null; } catch (e) { }
+
+                    hideLoader();
+
+                    const ok = json && (json.Success === true || json.Status === "success");
+
+                    if (res.ok && ok) {
+                        document.getElementById("formSection").style.display = "none";
+                        document.getElementById("thankYouSection").style.display = "block";
+
+                        const duration = 3000;
+                        const end = Date.now() + duration;
+                        const defaults = { startVelocity: 35, spread: 360, ticks: 80, zIndex: 999 };
+                        try {
+                            const audio = new Audio("https://cdn.pixabay.com/audio/2022/03/15/audio_1cf9bdb735.mp3");
+                            audio.play().catch(() => { });
+                        } catch (e) { }
+                        const interval = setInterval(() => {
+                            if (Date.now() > end) return clearInterval(interval);
+                            if (window.confetti) {
+                                confetti(Object.assign({}, defaults, {
+                                    particleCount: 40,
+                                    origin: { x: Math.random(), y: Math.random() - 0.2 }
+                                }));
+                            }
+                        }, 250);
+                    }
+                    else if (res.status === 409) {
+                        document.getElementById("formSection").style.display = "none";
+                        document.getElementById("errorSection").style.display = "block";
+                    }
+                    else {
+                        const msg =
+                            (json && (json.Message || json.message)) ||
+                            text ||
+                            res.status;
+                        alert("❌ Error: " + msg);
+                    }
+                })
+                .catch(err => {
+                    hideLoader();
+                    console.error("Submit error:", err);
+                    alert(
+                        document.body.dir === "rtl"
+                            ? "❌ تعذر إرسال الملاحظات. حاول مرة أخرى."
+                            : "❌ Could not submit feedback. Please try again."
+                    );
+                });
+        });
+    </script>
+</body>
+</html>

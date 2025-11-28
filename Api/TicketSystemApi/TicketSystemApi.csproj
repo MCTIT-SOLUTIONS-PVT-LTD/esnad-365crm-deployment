@@ -260,6 +260,7 @@
     <Compile Include="Models\ApiResponse.cs" />
     <Compile Include="Models\CaseRequestModel.cs" />
     <Compile Include="Models\ContactDto.cs" />
+    <Compile Include="Models\KICustomerFeedbackModel.cs" />
     <Compile Include="Models\VisitorFeedbackModel.cs" />
     <Compile Include="Models\CustomerFeedbackModel.cs" />
     <Compile Include="Models\PlainTextResult.cs" />
