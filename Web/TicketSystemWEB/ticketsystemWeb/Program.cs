@@ -19,6 +19,15 @@ app.MapGet("/Visitor", async context =>
     );
 });
 
+// Map /KITicket to feedback.html
+app.MapGet("/KITicket", async context =>
+{
+    context.Response.ContentType = "text/html";
+    await context.Response.SendFileAsync(
+        Path.Combine(app.Environment.WebRootPath, "feedback.html")
+    );
+});
+
 // If you still want SPA fallback, uncomment below:
 // app.MapFallbackToFile("index.html");
 
