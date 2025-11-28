@@ -375,7 +375,32 @@
     <script>
         const stars = document.querySelectorAll(".star");
         const urlParams = new URLSearchParams(window.location.search);
-        let ticketNumber = urlParams.get("ticketNumber");
+        const urlParams = new URLSearchParams(window.location.search);
+        console.log("Full QueryString Raw =>", window.location.search);
+        console.log("URL Params Object =>", urlParams);
+        console.log("ticketNumber Param =>", urlParams.get("ticketNumber"));
+        console.log("ticketnumber Param =>", urlParams.get("ticketnumber"));
+        console.log("ALL Values =>", [...urlParams.entries()]);
+
+       // let ticketNumber = urlParams.get("ticketNumber");
+        // Read any version (case-insensitive)
+        let ticketNumberRaw =
+            urlParams.get("ticketNumber") ||
+            urlParams.get("ticketnumber") ||
+            urlParams.get("TicketNumber") ||
+            urlParams.get("TICKETNUMBER");
+
+        // Normalize → remove spaces + keep ONLY 0–9 digits
+        let ticketNumber = "";
+        if (ticketNumberRaw) {
+            ticketNumber = (ticketNumberRaw.match(/\d+/g) || []).join("");
+            // ex: "KI-01800" → "01800"
+        }
+
+        console.log("RAW VALUE FROM URL:", ticketNumberRaw);
+        console.log("CLEAN NUMERIC TICKET:", ticketNumber);
+
+
 
         let selectedRating = 0;
         let incidentId = null;
