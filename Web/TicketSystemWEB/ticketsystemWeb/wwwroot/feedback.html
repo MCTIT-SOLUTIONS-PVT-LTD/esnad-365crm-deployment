@@ -502,12 +502,7 @@
 
         // === Load ticket info from API: GET /customers/ki-ticket/{ticketNumber}
         (function loadTicket() {
-            if (!ticketNumber) {
-                document.getElementById("ticketNumber").innerText = "Invalid Ticket Number";
-                document.getElementById("userName").innerText = "(Unknown)";
-                return;
-            }
-
+           
             fetch(`${domain}/customers/ki-ticket/${encodeURIComponent(ticketNumber)}`, {
                 headers: {
                     "Accept": "application/json",
