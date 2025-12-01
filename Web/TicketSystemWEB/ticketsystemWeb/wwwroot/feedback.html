@@ -275,6 +275,15 @@
                 top: 12px;
             }
         }
+        /* ===== FIX FORM-LABEL ARABIC TEXT WRAPPING PERFECTLY ===== */
+        body[dir="rtl"] .form-label {
+            direction: rtl !important;
+            unicode-bidi: bidi-override !important;
+            text-align: right !important;
+            white-space: normal !important;
+            display: block !important;
+            line-height: 1.7; /* Optional: Makes labels cleaner */
+        }
     </style>
 
     <script>
@@ -283,7 +292,7 @@
         const token = window.ENV?.TOKEN || "Kh4JBCqfGKYwwhSaJtbu95kxhO5LmLfXO1UGM6falBaX3sa0LvXeBQOD29SiwZoG";
 
         // ✅ Replace these at build time in GitHub Actions For Dev
-        //const domain = window.ENV?.DOMAIN || "https://devapi.crm-esnad.com";
+       // const domain = window.ENV?.DOMAIN || "https://devapi.crm-esnad.com";
         //const token = window.ENV?.TOKEN || "Kh4JBCqfGKYwwhSaJtbu95kxhO5LmLfXO1UGM6falBaX3sa0LvXeBQOD29SiwZoG";
 
         console.log("domain := " + domain);
@@ -375,14 +384,14 @@
     <script>
         const stars = document.querySelectorAll(".star");
         const urlParams = new URLSearchParams(window.location.search);
-       // const urlParams = new URLSearchParams(window.location.search);
+        // const urlParams = new URLSearchParams(window.location.search);
         console.log("Full QueryString Raw =>", window.location.search);
         console.log("URL Params Object =>", urlParams);
         console.log("ticketNumber Param =>", urlParams.get("ticketNumber"));
         console.log("ticketnumber Param =>", urlParams.get("ticketnumber"));
         console.log("ALL Values =>", [...urlParams.entries()]);
 
-       // let ticketNumber = urlParams.get("ticketNumber");
+        // let ticketNumber = urlParams.get("ticketNumber");
         // Read any version (case-insensitive)
         let ticketNumberRaw =
             urlParams.get("ticketNumber") ||
@@ -527,7 +536,7 @@
 
         // === Load ticket info from API: GET /customers/ki-ticket/{ticketNumber}
         (function loadTicket() {
-           
+
             fetch(`${domain}/customers/ki-ticket/${encodeURIComponent(ticketNumber)}`, {
                 headers: {
                     "Accept": "application/json",
