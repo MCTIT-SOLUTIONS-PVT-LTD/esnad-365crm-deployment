@@ -41,7 +41,7 @@ namespace TicketSystemApi.Controllers
                         "resolveby", "new_description", "new_ticketsubmissionchannel",//changed new_ticketclosuredate to resolveby
                         "new_businessunitid", "createdby", "modifiedby", "ownerid", "customerid",
                         "new_tickettype", "new_mainclassification", "new_subclassificationitem",
-                        "new_isreopened", "new_reopendatetime",
+                        "new_isreopened", "new_reopendatetime", "new_reopencount",
 
                         // ✅ SLA Success Times
                         "new_assignmentsucceededon", "new_processingsucceededon", "new_solutionverificationsucceededon",
@@ -109,6 +109,7 @@ namespace TicketSystemApi.Controllers
                         AgentName = e.GetAttributeValue<EntityReference>("ownerid")?.Name,
                         CustomerID = e.GetAttributeValue<EntityReference>("customerid")?.Id,
                         CustomerName = e.GetAttributeValue<EntityReference>("customerid")?.Name,
+                        CustomerCrNumber = GetCustomerCrNumber(service, e.GetAttributeValue<EntityReference>("customerid")),
                         CreatedOn = ConvertToKsaTime(e.GetAttributeValue<DateTime?>("createdon"))?.ToString("yyyy-MM-dd HH:mm:ss"),
                         TicketType = e.GetAttributeValue<EntityReference>("new_tickettype")?.Name,
                         Category = e.GetAttributeValue<EntityReference>("new_tickettype")?.Name,
@@ -128,7 +129,7 @@ namespace TicketSystemApi.Controllers
                         // (same as ResolutionDateTime)ClosedOn = ConvertToKsaTime(e.GetAttributeValue<DateTime?>("new_ticketclosuredate")),
 
                         ResolutionDateTime = GetResolutionDateTime(e)?.ToString("yyyy-MM-dd HH:mm:ss"),
-
+                        //Ticketreopencount= e.GetAttributeValue<string>("new_reopencount"),
                         // CSAT Fields
                         Customer_Satisfaction_Score = csat.Comment,
                         How_Satisfied_Are_You_With_How_The_Ticket_Was_Handled = csat.Score,
@@ -253,6 +254,76 @@ namespace TicketSystemApi.Controllers
             }
 
             return (score, comment, appropriateTimeTaken, improvementComment);
+        }
+        // Add this helper method to the controller
+        private string GetCustomerCrNumber(IOrganizationService service, EntityReference customerRef)
+        {
+            if (customerRef == null) return null;
+
+            // candidate attribute logical names for CR number (update with your real schema name if needed)
+            var candidateAttrs = new[]
+            {
+                "new_crnumber"
+            };
+
+            // local func to attempt retrieve and read any candidate attribute
+            string TryGetFromRecord(string logicalName, Guid id)
+            {
+                try
+                {
+                    var cols = new ColumnSet(candidateAttrs);
+                    var rec = service.Retrieve(logicalName, id, cols);
+                    foreach (var a in candidateAttrs)
+                    {
+                        if (rec.Attributes.Contains(a))
+                        {
+                            var val = rec.GetAttributeValue<string>(a);
+                            if (!string.IsNullOrWhiteSpace(val)) return val;
+                        }
+                    }
+                }
+                catch
+                {
+                    // swallow and return null - retrieval failure shouldn't crash report
+                }
+                return null;
+            }
+
+            // If customer is account, read account directly
+            if (string.Equals(customerRef.LogicalName, "account", StringComparison.OrdinalIgnoreCase))
+            {
+                return TryGetFromRecord("account", customerRef.Id);
+            }
+
+            // If customer is contact, check contact, then check contact's parentaccount (parentcustomerid)
+            if (string.Equals(customerRef.LogicalName, "contact", StringComparison.OrdinalIgnoreCase))
+            {
+                // try contact first
+                var fromContact = TryGetFromRecord("contact", customerRef.Id);
+                if (!string.IsNullOrWhiteSpace(fromContact)) return fromContact;
+
+                // try parent account if contact points to one
+                try
+                {
+                    var contact = service.Retrieve("contact", customerRef.Id, new ColumnSet("new_companyname"));
+                    if (contact != null && contact.Attributes.Contains("new_companyname"))
+                    {
+                        var parent = contact.GetAttributeValue<EntityReference>("new_companyname");
+                        if (parent != null && string.Equals(parent.LogicalName, "account", StringComparison.OrdinalIgnoreCase))
+                        {
+                            var fromParentAccount = TryGetFromRecord("account", parent.Id);
+                            if (!string.IsNullOrWhiteSpace(fromParentAccount)) return fromParentAccount;
+                        }
+                    }
+                }
+                catch
+                {
+                    // ignore
+                }
+            }
+
+            // fallback nothing found
+            return null;
         }
 
         private string MapStatusCodeToStage(Entity ticket)
