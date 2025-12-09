@@ -224,7 +224,7 @@
 
     <script>
         // ===== Configuration (edit or use window.ENV in hosting environment) =====
-       // const domain = window.ENV?.DOMAIN || (window.location.origin + "/api/customers"); // e.g. https://api.myserver.com/api/customers
+        //const domain = window.ENV?.DOMAIN || (window.location.origin + "/api/customers"); // e.g. https://api.myserver.com/api/customers
        
         // ✅ Replace these at build time in GitHub Actions for PROD
         //const domain = window.ENV?.DOMAIN || "https://api.crm-esnad.com";
@@ -257,6 +257,7 @@
                 q2: "How satisfied are you with the responsiveness of the Relationship Manager to your requests?",
                 q3: "How satisfied are you with the professionalism of the Relationship Manager?",
                 q4: "How satisfied are you with the solution provided to you?",
+                commentLabel: "Please share any suggestions or additional comments:",
                 commentPlaceholder: "Please share any suggestions or additional comments...",
                 submit: "Submit",
                 thankTitle: "Thank You!",
@@ -272,6 +273,7 @@
                 q2: "ما مدى رضاك عن استجابة مدير العلاقة لطلباتك؟",
                 q3: "ما مدى رضاك عن احترافية مدير العلاقة؟",
                 q4: "ما مدى رضاك عن الحل المقدم لك؟",
+                commentLabel: "هل لديك أية اقتراحات أو تعليقات إضافية؟",
                 commentPlaceholder: "الرجاء كتابة ملاحظاتك هنا...",
                 submit: "إرسال",
                 thankTitle: "شكرًا لك!",
@@ -302,6 +304,7 @@
             document.getElementById('q2Label').innerText = t('q2');
             document.getElementById('q3Label').innerText = t('q3');
             document.getElementById('q4Label').innerText = t('q4');
+            document.getElementById('commentLabel').innerText = t('commentLabel');
             document.getElementById('comment').placeholder = t('commentPlaceholder');
             document.getElementById('submitBtn').innerText = t('submit');
             document.getElementById('thankTitle').innerText = t('thankTitle');
@@ -377,8 +380,8 @@
             try {
                 setSubmitEnabled(false);
                 showLoader();
-                // Note: endpoint path kept as /by-visitor-number for backend compatibility
-                const res = await fetch(`${domain}/by-visitor-number/${encodeURIComponent(referenceNumber)}`, {
+                // Note: endpoint path kept as /by-visitor-number for backend compatibility   customers/by-reference-number/C-00001
+                const res = await fetch(`${domain}/customers/by-reference-number/${encodeURIComponent(referenceNumber)}`, {
                     headers: { "Authorization": `Bearer ${token}` }
                 });
 
@@ -465,8 +468,8 @@
             try {
                 setSubmitEnabled(false);
                 showLoader();
-
-                const res = await fetch(`${domain}/visitor-feedback`, {
+                ///keyinvestors/feedback
+                const res = await fetch(`${domain}/customers/keyinvestors/feedback`, {
                     method: 'POST',
                     headers: {
                         "Authorization": `Bearer ${token}`,
