@@ -674,6 +674,241 @@ namespace TicketSystemApi.Controllers
                     ApiResponse<object>.Error($"CRM error: {ex.Message}"));
             }
         }
+        // ===================== GET /api/keyinvestors/by-reference-number/{referenceNumber} =====================
+        [HttpGet]
+        [Route("by-reference-number/{referenceNumber}")]
+        public IHttpActionResult GetByReferenceNumber(string referenceNumber)
+        {
+            var authHeader = Request.Headers.Authorization;
+            string expectedToken = ConfigurationManager.AppSettings["ApiBearerToken"];
+
+            if (authHeader == null || authHeader.Scheme != "Bearer" || authHeader.Parameter != expectedToken)
+                return Content(HttpStatusCode.Unauthorized, ApiResponse<object>.Error("Unauthorized - Invalid bearer token"));
+
+            if (string.IsNullOrWhiteSpace(referenceNumber))
+                return Content(HttpStatusCode.BadRequest, ApiResponse<object>.Error("Reference number is required."));
+
+            try
+            {
+                var service = _crmService.GetService();
+
+                // Query new_keyinvestorscommunication by new_referencenumber
+                var query = new QueryExpression("new_keyinvestorscommunication")
+                {
+                    ColumnSet = new ColumnSet("new_keyinvestorscommunicationid", "new_referencenumber", "new_investor"),
+                    Criteria = new FilterExpression
+                    {
+                        Conditions =
+                        {
+                            new ConditionExpression("new_referencenumber", ConditionOperator.Equal, referenceNumber)
+                        }
+                    }
+                };
+
+                var results = service.RetrieveMultiple(query);
+
+                if (results.Entities.Count == 0)
+                    return Content(HttpStatusCode.NotFound, ApiResponse<object>.Error($"No Key Investors Communication found with reference number: {referenceNumber}"));
+
+                // choose first match (adjust if you need different business logic)
+                var record = results.Entities.First();
+                var recordId = record.Id;
+                var investorRef = record.GetAttributeValue<EntityReference>("new_investor");
+
+                if (investorRef == null)
+                {
+                    return Content(HttpStatusCode.NotFound, ApiResponse<object>.Error("Record has no linked investor (new_investor)."));
+                }
+
+                if (investorRef.LogicalName == "contact")
+                {
+                    var contact = service.Retrieve("contact", investorRef.Id,
+                        new ColumnSet("contactid", "fullname", "firstname", "lastname", "emailaddress1", "mobilephone", "statuscode", "createdon"));
+
+                    return Ok(ApiResponse<object>.Success(new
+                    {
+                        RecordId = recordId,
+                        ReferenceNumber = referenceNumber,
+                        EntityType = "Contact",
+                        ContactId = contact.Id,
+                        FullName = contact.GetAttributeValue<string>("fullname"),
+                        FirstName = contact.GetAttributeValue<string>("firstname"),
+                        LastName = contact.GetAttributeValue<string>("lastname"),
+                        Email = contact.GetAttributeValue<string>("emailaddress1"),
+                        MobilePhone = contact.GetAttributeValue<string>("mobilephone"),
+                        Status = contact.FormattedValues.ContainsKey("statuscode") ? contact.FormattedValues["statuscode"] : null,
+                        CreatedOn = contact.GetAttributeValue<DateTime?>("createdon")
+                    }, "Contact retrieved successfully"));
+                }
+                else if (investorRef.LogicalName == "account")
+                {
+                    var account = service.Retrieve("account", investorRef.Id,
+                        new ColumnSet("accountid", "name", "emailaddress1", "telephone1", "new_crnumber", "statuscode", "createdon"));
+
+                    return Ok(ApiResponse<object>.Success(new
+                    {
+                        RecordId = recordId,
+                        ReferenceNumber = referenceNumber,
+                        EntityType = "Account",
+                        AccountId = account.Id,
+                        Name = account.GetAttributeValue<string>("name"),
+                        Email = account.GetAttributeValue<string>("emailaddress1"),
+                        RepresentativePhone = account.GetAttributeValue<string>("telephone1"),
+                        CRNumber = account.GetAttributeValue<string>("new_crnumber"),
+                        Status = account.FormattedValues.ContainsKey("statuscode") ? account.FormattedValues["statuscode"] : null,
+                        CreatedOn = account.GetAttributeValue<DateTime?>("createdon")
+                    }, "Account retrieved successfully"));
+                }
+                else
+                {
+                    return Content(HttpStatusCode.BadRequest, ApiResponse<object>.Error($"Unsupported investor lookup type: {investorRef.LogicalName}"));
+                }
+            }
+            catch (Exception ex)
+            {
+                return Content(HttpStatusCode.InternalServerError, ApiResponse<object>.Error($"CRM error: {ex.Message}"));
+            }
+        }
+        // ===================== POST /api/keyinvestors/feedback =====================
+        [HttpPost]
+        [Route("keyinvestors/feedback")]
+        public IHttpActionResult SubmitFeedback([FromBody] KeyInvestorFeedbackModel model)
+        {
+            var authHeader = Request.Headers.Authorization;
+            string expectedToken = ConfigurationManager.AppSettings["ApiBearerToken"];
+
+            if (authHeader == null || authHeader.Scheme != "Bearer" || authHeader.Parameter != expectedToken)
+                return Content(HttpStatusCode.Unauthorized, ApiResponse<object>.Error("Unauthorized - Invalid bearer token"));
+
+            if (model == null || string.IsNullOrWhiteSpace(model.ReferenceRecordId))
+                return Content(HttpStatusCode.BadRequest, ApiResponse<object>.Error("ReferenceRecordId is required."));
+
+            // At least one of ContactId or AccountId must be provided
+            if (string.IsNullOrWhiteSpace(model.ContactId) && string.IsNullOrWhiteSpace(model.AccountId))
+                return Content(HttpStatusCode.BadRequest, ApiResponse<object>.Error("ContactId or AccountId is required."));
+
+            try
+            {
+                var service = _crmService.GetService();
+
+                var survey = new Entity("new_communicationsatisfactionsurvey");
+                string linkedVia = "";
+
+                // Link to contact if provided
+                if (!string.IsNullOrWhiteSpace(model.ContactId))
+                {
+                    if (!Guid.TryParse(model.ContactId, out Guid contactGuid))
+                        return Content(HttpStatusCode.BadRequest, ApiResponse<object>.Error("Invalid ContactId format."));
+
+                    // Duplicate check: feedback already for same contact + reference?
+                    var dupQuery = new QueryExpression("new_communicationsatisfactionsurvey")
+                    {
+                        ColumnSet = new ColumnSet("new_communicationsatisfactionsurveyid"),
+                        Criteria =
+                        {
+                            Filters =
+                            {
+                                new FilterExpression
+                                {
+                                    FilterOperator = LogicalOperator.And,
+                                    Conditions =
+                                    {
+                                        new ConditionExpression("new_communicationsatisfactionsurvey_contact", ConditionOperator.Equal, contactGuid),
+                                        // if you want to ensure unique per referenceRecordId, you can add condition below (requires storing reference on survey)
+                                        // new ConditionExpression("new_communicationsatisfactionsurvey_reference", ConditionOperator.Equal, new Guid(model.ReferenceRecordId))
+                                    }
+                                }
+                            }
+                        }
+                    };
+
+                    if (service.RetrieveMultiple(dupQuery).Entities.Any())
+                        return Content(HttpStatusCode.Conflict, ApiResponse<object>.Error("Feedback already submitted for this contact."));
+
+                   //survey["new_communicationsatisfactionsurvey_contact"] = new EntityReference("contact", contactGuid);
+                    linkedVia = "Contact";
+                }
+                // Link to account if provided
+                else if (!string.IsNullOrWhiteSpace(model.AccountId))
+                {
+                    if (!Guid.TryParse(model.AccountId, out Guid accountGuid))
+                        return Content(HttpStatusCode.BadRequest, ApiResponse<object>.Error("Invalid AccountId format."));
+
+                    //// Duplicate check for account (similar logic)
+                    //var dupQueryAcc = new QueryExpression("new_communicationsatisfactionsurvey")
+                    //{
+                    //    ColumnSet = new ColumnSet("new_communicationsatisfactionsurveyid"),
+                    //    Criteria =
+                    //    {
+                    //        Filters =
+                    //        {
+                    //            new FilterExpression
+                    //            {
+                    //                FilterOperator = LogicalOperator.And,
+                    //                Conditions =
+                    //                {
+                    //                    new ConditionExpression("new_communicationsatisfactionsurvey_account", ConditionOperator.Equal, accountGuid)
+                    //                }
+                    //            }
+                    //        }
+                    //    }
+                    //};
+
+                    //if (service.RetrieveMultiple(dupQueryAcc).Entities.Any())
+                    //    return Content(HttpStatusCode.Conflict, ApiResponse<object>.Error("Feedback already submitted for this account."));
+
+                  //  survey["new_communicationsatisfactionsurvey_account"] = new EntityReference("account", accountGuid);
+                    linkedVia = "Account";
+                }
+
+                // Link to the keyinvestorscommunication record (required)
+                if (!Guid.TryParse(model.ReferenceRecordId, out Guid refGuid))
+                {
+                    return Content(HttpStatusCode.BadRequest, ApiResponse<object>.Error("Invalid ReferenceRecordId format."));
+                }
+
+                // store the link on survey entity - adjust logical name as per your CRM schema
+                survey["new_keyinvestorcommunication"] = new EntityReference("new_keyinvestorscommunication", refGuid);
+
+
+                // Map rating fields (option set values)
+                if (model.OverallSatisfaction >= 1 && model.OverallSatisfaction <= 5)
+                    survey["new_overallhowsatisfiedareyouwithyourexperien"] = new OptionSetValue(model.OverallSatisfaction);
+
+                if (model.Responsiveness >= 1 && model.Responsiveness <= 5)
+                    survey["new_howsatisfiedareyouwiththeresponsivenessof"] = new OptionSetValue(model.Responsiveness);
+
+                if (model.Professionalism >= 1 && model.Professionalism <= 5)
+                    survey["new_howsatisfiedareyouwiththeprofessionalismo"] = new OptionSetValue(model.Professionalism);
+
+                if (model.SolutionProvided >= 1 && model.SolutionProvided <= 5)
+                    survey["new_howsatisfiedareyouwiththesolutionprovided"] = new OptionSetValue(model.SolutionProvided);
+
+                // Comments
+                if (!string.IsNullOrWhiteSpace(model.Comments))
+                    survey["new_doyouhaveanysuggestionsandoradditionalcom"] = model.Comments.Trim();
+
+                // Optional: owner assignment
+                if (!string.IsNullOrWhiteSpace(model.OwnerId) && Guid.TryParse(model.OwnerId, out Guid ownerGuid))
+                {
+                    // Set owner to systemuser by default; modify if you need to support team owners
+                    survey["ownerid"] = new EntityReference("systemuser", ownerGuid); 
+                }
+
+                var createdId = service.Create(survey);
+
+                return Ok(ApiResponse<object>.Success(new
+                {
+                    SurveyId = createdId,
+                    LinkedVia = linkedVia
+                }, "Feedback submitted successfully"));
+            }
+            catch (Exception ex)
+            {
+                return Content(HttpStatusCode.InternalServerError, ApiResponse<object>.Error($"CRM error: {ex.Message}"));
+            }
+        }
+   
 
         // ===================== Helper: Only validate integers, no KI prefix, no padding =====================
         private string NormalizeTicketNumber(string raw)

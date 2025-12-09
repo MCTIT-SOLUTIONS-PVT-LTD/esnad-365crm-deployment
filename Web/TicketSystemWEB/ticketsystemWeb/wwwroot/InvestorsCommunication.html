@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="utf-8" />
+    <title>Key Investors Communication — Feedback</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        /* UI CSS */
+        body {
+            background-color: #e8e6db;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Segoe UI', sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .feedback-card {
+            background: #fff;
+            border-radius: 24px;
+            padding: 24px;
+            width: 100%;
+            max-width: 640px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+            position: relative;
+            overflow: visible;
+        }
+
+        /* Language switcher now lives inside the card, top-right */
+        .lang-switcher {
+            position: absolute;
+            top: 16px;
+            right: 20px; /* for LTR and RTL placement - adjust if needed */
+            width: 170px;
+            z-index: 10;
+        }
+
+        /* when in Arabic (rtl) we still want it visually top-right; keep same coordinates */
+        .ticket-number {
+            font-size: 14px;
+            color: #555;
+            background: #f0f0f0;
+            border-radius: 12px;
+            padding: 6px 14px;
+            margin-top: 8px;
+            display: inline-block;
+        }
+
+        .label-small {
+            font-size: 14px;
+            color: #333;
+            margin-top: 10px;
+            display: block;
+        }
+
+        select.form-select {
+            border-radius: 12px;
+            padding: 10px 12px;
+            font-size: 14px;
+        }
+
+        textarea.form-control {
+            border-radius: 12px;
+            padding: 12px;
+            font-size: 14px;
+        }
+
+        .footer-section {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 18px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+            .user-info img {
+                width: 40px;
+                height: 40px;
+                border-radius: 50%;
+                object-fit: cover;
+            }
+
+        .user-name {
+            font-size: 15px;
+            font-weight: 600;
+        }
+
+        .btn-submit {
+            background: #12988b;
+            color: #fff;
+            border: none;
+            padding: 10px 24px;
+            border-radius: 30px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+            .btn-submit:disabled {
+                opacity: 0.6;
+                cursor: not-allowed;
+            }
+
+        #thankYouSection, #errorSection {
+            display: none;
+            background: #fff8e6;
+            max-width: 640px;
+            margin: auto;
+            padding: 30px 24px;
+            border-radius: 24px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        #loaderOverlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(255,255,255,0.85);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .small-note {
+            font-size: 12px;
+            color: #777;
+            margin-top: 6px;
+        }
+
+        /* responsive tweak: move switcher inline on very small screens */
+        @media (max-width: 420px) {
+            .lang-switcher {
+                position: static;
+                width: auto;
+                margin-bottom: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- language switcher OUTSIDE card (top-right) -->
+    <div class="lang-switcher">
+        <select id="languageSwitcher" class="form-select form-select-sm" style="border-radius:20px; width:100%;">
+            <option value="ar" selected>🇸🇦 العربية</option>
+            <option value="en">🇺🇸 English</option>
+        </select>
+    </div>
+
+    <div id="formSection" class="feedback-card" dir="rtl" aria-live="polite">
+
+
+        <div class="text-center mb-3">
+            <h4 id="pageTitle">ملاحظاتك</h4>
+            <div class="ticket-number" id="ticketNumber">جاري تحميل بيانات Key Investors Communication...</div>
+            <div class="small-note" id="recordSubtitle">—</div>
+        </div>
+
+        <!-- Q1 -->
+        <label id="q1Label" class="label-small">ما مدى رضاك عن تجربتك معنا؟</label>
+        <select id="q1Select" class="form-select" aria-label="Overall satisfaction select"></select>
+
+        <!-- Q2 -->
+        <label id="q2Label" class="label-small">ما مدى رضاك عن استجابة مدير العلاقة لطلباتك؟</label>
+        <select id="q2Select" class="form-select" aria-label="Responsiveness select"></select>
+
+        <!-- Q3 -->
+        <label id="q3Label" class="label-small">ما مدى رضاك عن احترافية مدير العلاقة؟</label>
+        <select id="q3Select" class="form-select" aria-label="Professionalism select"></select>
+
+        <!-- Q4 -->
+        <label id="q4Label" class="label-small">ما مدى رضاك عن الحل المقدم لك؟</label>
+        <select id="q4Select" class="form-select" aria-label="Solution provided select"></select>
+
+        <!-- Comments -->
+        <div class="mb-3" style="margin-top:12px;">
+            <label id="commentLabel" class="label-small">هل لديك أية اقتراحات أو تعليقات إضافية؟</label>
+            <textarea id="comment" class="form-control" rows="4" placeholder="الرجاء كتابة ملاحظاتك هنا..."></textarea>
+        </div>
+
+        <div class="footer-section">
+            <div class="user-info">
+                <img id="userAvatar" src="https://cdn-icons-png.flaticon.com/512/921/921347.png" alt="avatar">
+                <div>
+                    <div class="user-name" id="userName">جاري تحميل بيانات الجهة...</div>
+                    <div class="small-note" id="userSub">—</div>
+                </div>
+            </div>
+
+            <div>
+                <button id="submitBtn" class="btn-submit" onclick="submitFeedback()">إرسال</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="thankYouSection" role="status" aria-live="polite">
+        <div class="emoji" style="font-size:2.5rem;">🎉</div>
+        <h4 id="thankTitle">شكرًا لك!</h4>
+        <p id="thankText">تم إرسال ملاحظاتك بنجاح.</p>
+    </div>
+
+    <div id="errorSection" role="alert" aria-live="assertive">
+        <div class="emoji" style="font-size:2.2rem;">❌</div>
+        <h4 id="errorTitle">تم الإرسال سابقًا</h4>
+        <p id="errorText">لقد قمت بإرسال ملاحظاتك مسبقًا لهذه المعاملة.</p>
+    </div>
+
+    <div id="loaderOverlay" aria-hidden="true">
+        <div class="spinner-border text-success" style="width:3rem; height:3rem;" role="status"><span class="visually-hidden">Loading...</span></div>
+    </div>
+
+    <script>
+        // ===== Configuration (edit or use window.ENV in hosting environment) =====
+        const domain = window.ENV?.DOMAIN || (window.location.origin + "/api/customers"); // e.g. https://api.myserver.com/api/customers
+        const token = window.ENV?.TOKEN || "__API_TOKEN__";
+
+        // ===== Options arrays (English + Arabic) =====
+        const options_en = [
+            { value: 1, text: "Very satisfied" },
+            { value: 2, text: "Satisfied" },
+            { value: 3, text: "Neutral" },
+            { value: 4, text: "Dissatisfied" },
+            { value: 5, text: "Very dissatisfied" }
+        ];
+        const options_ar = [
+            { value: 1, text: "راضٍ جدًا" },
+            { value: 2, text: "راضٍ" },
+            { value: 3, text: "محايد" },
+            { value: 4, text: "غير راضٍ" },
+            { value: 5, text: "غير راضٍ جدًا" }
+        ];
+
+        // ===== Translations for UI text =====
+        const translations = {
+            en: {
+                title: "Your Feedback",
+                q1: "Overall, how satisfied are you with your experience with us?",
+                q2: "How satisfied are you with the responsiveness of the Relationship Manager to your requests?",
+                q3: "How satisfied are you with the professionalism of the Relationship Manager?",
+                q4: "How satisfied are you with the solution provided to you?",
+                commentPlaceholder: "Please share any suggestions or additional comments...",
+                submit: "Submit",
+                thankTitle: "Thank You!",
+                thankText: "Your feedback has been submitted successfully.",
+                alreadySubmittedTitle: "Feedback Already Submitted",
+                alreadySubmittedText: "You have already submitted feedback for this Key Investors Communication record.",
+                mustAnswer: "Please answer all four rating questions.",
+                missingEntity: "Cannot submit until Key Investors Communication data is loaded."
+            },
+            ar: {
+                title: "ملاحظاتك",
+                q1: "ما مدى رضاك عن تجربتك معنا؟",
+                q2: "ما مدى رضاك عن استجابة مدير العلاقة لطلباتك؟",
+                q3: "ما مدى رضاك عن احترافية مدير العلاقة؟",
+                q4: "ما مدى رضاك عن الحل المقدم لك؟",
+                commentPlaceholder: "الرجاء كتابة ملاحظاتك هنا...",
+                submit: "إرسال",
+                thankTitle: "شكرًا لك!",
+                thankText: "تم إرسال ملاحظاتك بنجاح.",
+                alreadySubmittedTitle: "تم الإرسال سابقًا",
+                alreadySubmittedText: "لقد قمت بإرسال ملاحظاتك مسبقًا لهذه المعاملة.",
+                mustAnswer: "يرجى الإجابة على أسئلة التقييم الأربعة.",
+                missingEntity: "لا يمكن الإرسال قبل تحميل بيانات Key Investors Communication."
+            }
+        };
+
+        // ===== State (no visible 'visitor' names) =====
+        let currentLang = 'ar';
+        let linkedEntityId = null;          // Contact or Account GUID string
+        let linkedEntityType = null;        // "Contact" or "Account"
+        let referenceRecordId = null;       // new_keyinvestorscommunication GUID (server record)
+
+        // ===== Utility to translate & update UI =====
+        function t(key) {
+            return (translations[currentLang] || translations.en)[key];
+        }
+
+        function setLanguage(lang) {
+            currentLang = lang;
+            document.documentElement.lang = lang;
+            document.getElementById('pageTitle').innerText = t('title');
+            document.getElementById('q1Label').innerText = t('q1');
+            document.getElementById('q2Label').innerText = t('q2');
+            document.getElementById('q3Label').innerText = t('q3');
+            document.getElementById('q4Label').innerText = t('q4');
+            document.getElementById('comment').placeholder = t('commentPlaceholder');
+            document.getElementById('submitBtn').innerText = t('submit');
+            document.getElementById('thankTitle').innerText = t('thankTitle');
+            document.getElementById('thankText').innerText = t('thankText');
+            document.getElementById('errorTitle').innerText = t('alreadySubmittedTitle');
+            document.getElementById('errorText').innerText = t('alreadySubmittedText');
+
+            const dir = lang === 'ar' ? 'rtl' : 'ltr';
+            document.getElementById('formSection').setAttribute('dir', dir);
+            document.body.dir = dir;
+
+            // repopulate selects in chosen language while attempting to preserve selection
+            populateSelects();
+        }
+
+        document.getElementById('languageSwitcher').addEventListener('change', (e) => setLanguage(e.target.value));
+        setLanguage('ar'); // default
+
+        // ===== Populate selects =====
+        function createOptionEl(o) {
+            const opt = document.createElement('option');
+            opt.value = o.value;
+            opt.innerText = o.text;
+            return opt;
+        }
+
+        function populateSelects() {
+            const opts = currentLang === 'ar' ? options_ar : options_en;
+            const selects = ['q1Select', 'q2Select', 'q3Select', 'q4Select'];
+            selects.forEach(id => {
+                const sel = document.getElementById(id);
+                const curVal = sel.value;
+                sel.innerHTML = ""; // clear
+                const placeholder = document.createElement('option');
+                placeholder.value = "";
+                placeholder.disabled = true;
+                placeholder.selected = (curVal === "" || curVal == null);
+                placeholder.innerText = currentLang === 'ar' ? "اختر..." : "Select...";
+                sel.appendChild(placeholder);
+                opts.forEach(o => sel.appendChild(createOptionEl(o)));
+                if (curVal) {
+                    sel.value = curVal;
+                    if (sel.value !== curVal) sel.selectedIndex = 0;
+                }
+            });
+        }
+
+        populateSelects();
+
+        // ===== Loader helpers =====
+        function showLoader() { document.getElementById('loaderOverlay').style.display = 'flex'; }
+        function hideLoader() { document.getElementById('loaderOverlay').style.display = 'none'; }
+        function setSubmitEnabled(enabled) { document.getElementById('submitBtn').disabled = !enabled; }
+
+        // ===== Read query param for reference number =====
+        function getQueryKeys() {
+            const p = new URLSearchParams(location.search);
+            // Accept 'referenceNumber' or 'ref' or 'recordNumber'
+            return {
+                referenceNumber: p.get("referenceNumber") || p.get("ref") || p.get("recordNumber") || p.get("visitorNumber") || p.get("v") || p.get("visitorId")
+            };
+        }
+
+        // ===== Load record by new_referencenumber (calls backend GET /by-visitor-number/{referenceNumber}) =====
+        async function loadRecord() {
+            const { referenceNumber } = getQueryKeys();
+            if (!referenceNumber) {
+                document.getElementById('ticketNumber').innerText = "Key Investors Communication: (Missing)";
+                document.getElementById('userName').innerText = "(Unknown)";
+                setSubmitEnabled(false);
+                return;
+            }
+            try {
+                setSubmitEnabled(false);
+                showLoader();
+                // Note: endpoint path kept as /by-visitor-number for backend compatibility
+                const res = await fetch(`${domain}/by-visitor-number/${encodeURIComponent(referenceNumber)}`, {
+                    headers: { "Authorization": `Bearer ${token}` }
+                });
+
+                if (!res.ok) {
+                    hideLoader();
+                    document.getElementById('ticketNumber').innerText = `Key Investors Communication: (Not found)`;
+                    document.getElementById('userName').innerText = "(Unknown)";
+                    setSubmitEnabled(false);
+                    return;
+                }
+
+                const r = await res.json();
+                hideLoader();
+
+                if (!r || (!r.Success && !r.success) || !r.Data) {
+                    document.getElementById('ticketNumber').innerText = `Key Investors Communication: (Not found)`;
+                    document.getElementById('userName').innerText = "(Unknown)";
+                    setSubmitEnabled(false);
+                    return;
+                }
+
+                const d = r.Data;
+                // Accept various names returned from server
+                referenceRecordId = d.RecordId || d.recordId || d.VisitorId || d.visitorId || d.new_keyinvestorscommunicationid || null;
+                linkedEntityType = d.EntityType || d.entityType || null;
+
+                if (linkedEntityType === "Contact") {
+                    linkedEntityId = d.ContactId || d.contactId || d.contactid || null;
+                    document.getElementById('userName').innerText = d.FullName || d.fullName || d.name || "(No Name)";
+                    document.getElementById('userSub').innerText = (d.Email ? d.Email : '') + (d.MobilePhone ? ' • ' + d.MobilePhone : '');
+                } else if (linkedEntityType === "Account") {
+                    linkedEntityId = d.AccountId || d.accountId || d.accountid || null;
+                    document.getElementById('userName').innerText = d.Name || d.name || "(No Name)";
+                    document.getElementById('userSub').innerText = (d.Email ? d.Email : '') + (d.RepresentativePhone ? ' • ' + d.RepresentativePhone : '');
+                } else {
+                    linkedEntityId = null;
+                    document.getElementById('userName').innerText = "(Unknown)";
+                    document.getElementById('userSub').innerText = "";
+                }
+
+                document.getElementById('ticketNumber').innerText = `${referenceNumber}`;
+                setSubmitEnabled(!!referenceRecordId && !!linkedEntityId && !!linkedEntityType);
+
+            } catch (err) {
+                console.error("LoadRecord error", err);
+                hideLoader();
+                document.getElementById('ticketNumber').innerText = "Key Investors Communication: (Error)";
+                document.getElementById('userName').innerText = "(Unknown)";
+                setSubmitEnabled(false);
+            }
+        }
+
+        // ===== Submit feedback =====
+        async function submitFeedback() {
+            // Validate that all selects have a chosen value
+            const q1 = document.getElementById('q1Select').value;
+            const q2 = document.getElementById('q2Select').value;
+            const q3 = document.getElementById('q3Select').value;
+            const q4 = document.getElementById('q4Select').value;
+
+            if (!q1 || !q2 || !q3 || !q4) {
+                alert(t('mustAnswer'));
+                return;
+            }
+
+            if (!referenceRecordId) {
+                alert(t('missingEntity'));
+                return;
+            }
+
+            // Build payload to match server DTO
+            const payload = {
+                ReferenceRecordId: referenceRecordId,
+                ContactId: linkedEntityType === 'Contact' ? linkedEntityId : null,
+                AccountId: linkedEntityType === 'Account' ? linkedEntityId : null,
+                OverallSatisfaction: parseInt(q1, 10),
+                Responsiveness: parseInt(q2, 10),
+                Professionalism: parseInt(q3, 10),
+                SolutionProvided: parseInt(q4, 10),
+                Comments: (document.getElementById('comment').value || '').trim()
+                // OwnerId: optional
+            };
+
+            try {
+                setSubmitEnabled(false);
+                showLoader();
+
+                const res = await fetch(`${domain}/visitor-feedback`, {
+                    method: 'POST',
+                    headers: {
+                        "Authorization": `Bearer ${token}`,
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                let result = null;
+                try { result = await res.json(); } catch (e) { result = null; }
+
+                hideLoader();
+                setSubmitEnabled(true);
+
+                if (res.status === 409 || (result && ((result.Message || result.message || "").toLowerCase().includes('already')))) {
+                    // already submitted
+                    document.getElementById('formSection').style.display = 'none';
+                    document.getElementById('errorSection').style.display = 'block';
+                    return;
+                }
+
+                if (res.ok && result && (result.Success || result.success)) {
+                    document.getElementById('formSection').style.display = 'none';
+                    document.getElementById('thankYouSection').style.display = 'block';
+                    confetti({ particleCount: 120, spread: 70, origin: { y: 0.6 } });
+                    return;
+                }
+
+                const errMsg = (result && (result.Message || result.message)) || `HTTP ${res.status}`;
+                alert("❌ Error: " + errMsg);
+
+            } catch (err) {
+                console.error("Submit error", err);
+                hideLoader();
+                setSubmitEnabled(true);
+                alert(currentLang === 'ar' ? 'تعذّر إرسال الملاحظات.' : 'Could not submit feedback.');
+            }
+        }
+
+        // ===== Init on DOM ready =====
+        window.addEventListener('DOMContentLoaded', () => {
+            loadRecord();
+        });
+    </script>
+</body>
+</html>
