@@ -30,16 +30,15 @@
             overflow: visible;
         }
 
-        /* Language switcher now lives inside the card, top-right */
+        /* Language switcher inside the card, top-right */
         .lang-switcher {
             position: absolute;
             top: 16px;
-            right: 20px; /* for LTR and RTL placement - adjust if needed */
+            right: 20px;
             width: 170px;
             z-index: 10;
         }
 
-        /* when in Arabic (rtl) we still want it visually top-right; keep same coordinates */
         .ticket-number {
             font-size: 14px;
             color: #555;
@@ -141,7 +140,6 @@
             margin-top: 6px;
         }
 
-        /* responsive tweak: move switcher inline on very small screens */
         @media (max-width: 420px) {
             .lang-switcher {
                 position: static;
@@ -152,16 +150,13 @@
     </style>
 </head>
 <body>
-    <!-- language switcher OUTSIDE card (top-right) -->
-    <div class="lang-switcher">
-        <select id="languageSwitcher" class="form-select form-select-sm" style="border-radius:20px; width:100%;">
-            <option value="ar" selected>🇸🇦 العربية</option>
-            <option value="en">🇺🇸 English</option>
-        </select>
-    </div>
-
     <div id="formSection" class="feedback-card" dir="rtl" aria-live="polite">
-
+        <div class="lang-switcher">
+            <select id="languageSwitcher" class="form-select form-select-sm" style="border-radius:20px; width:100%;">
+                <option value="ar" selected>🇸🇦 العربية</option>
+                <option value="en">🇺🇸 English</option>
+            </select>
+        </div>
 
         <div class="text-center mb-3">
             <h4 id="pageTitle">ملاحظاتك</h4>
@@ -223,9 +218,7 @@
     </div>
 
     <script>
-        // ===== Configuration (edit or use window.ENV in hosting environment) =====
-        //const domain = window.ENV?.DOMAIN || (window.location.origin + "/api/customers"); // e.g. https://api.myserver.com/api/customers
-       
+        // ===== Configuration =====
         // ✅ Replace these at build time in GitHub Actions for PROD
         //const domain = window.ENV?.DOMAIN || "https://api.crm-esnad.com";
         //const token = window.ENV?.TOKEN || "Kh4JBCqfGKYwwhSaJtbu95kxhO5LmLfXO1UGM6falBaX3sa0LvXeBQOD29SiwZoG";
@@ -233,6 +226,7 @@
         // ✅ Replace these at build time in GitHub Actions For Dev
         const domain = window.ENV?.DOMAIN || "https://devapi.crm-esnad.com";
         const token = window.ENV?.TOKEN || "Kh4JBCqfGKYwwhSaJtbu95kxhO5LmLfXO1UGM6falBaX3sa0LvXeBQOD29SiwZoG";
+
         // ===== Options arrays (English + Arabic) =====
         const options_en = [
             { value: 1, text: "Very satisfied" },
@@ -285,13 +279,13 @@
             }
         };
 
-        // ===== State (no visible 'visitor' names) =====
+        // ===== State =====
         let currentLang = 'ar';
-        let linkedEntityId = null;          // Contact or Account GUID string
-        let linkedEntityType = null;        // "Contact" or "Account"
-        let referenceRecordId = null;       // new_keyinvestorscommunication GUID (server record)
+        let linkedEntityId = null;
+        let linkedEntityType = null;
+        let referenceRecordId = null;
 
-        // ===== Utility to translate & update UI =====
+        // ===== Utilities =====
         function t(key) {
             return (translations[currentLang] || translations.en)[key];
         }
@@ -316,12 +310,11 @@
             document.getElementById('formSection').setAttribute('dir', dir);
             document.body.dir = dir;
 
-            // repopulate selects in chosen language while attempting to preserve selection
             populateSelects();
         }
 
         document.getElementById('languageSwitcher').addEventListener('change', (e) => setLanguage(e.target.value));
-        setLanguage('ar'); // default
+        setLanguage('ar');
 
         // ===== Populate selects =====
         function createOptionEl(o) {
@@ -337,7 +330,7 @@
             selects.forEach(id => {
                 const sel = document.getElementById(id);
                 const curVal = sel.value;
-                sel.innerHTML = ""; // clear
+                sel.innerHTML = "";
                 const placeholder = document.createElement('option');
                 placeholder.value = "";
                 placeholder.disabled = true;
@@ -362,13 +355,21 @@
         // ===== Read query param for reference number =====
         function getQueryKeys() {
             const p = new URLSearchParams(location.search);
-            // Accept 'referenceNumber' or 'ref' or 'recordNumber'
             return {
                 referenceNumber: p.get("referenceNumber") || p.get("ref") || p.get("recordNumber") || p.get("visitorNumber") || p.get("v") || p.get("visitorId")
             };
         }
 
-        // ===== Load record by new_referencenumber (calls backend GET /by-visitor-number/{referenceNumber}) =====
+        // ===== Helper to normalize success flag =====
+        function isApiSuccess(resp) {
+            if (!resp) return false;
+            if (typeof resp.Success === 'boolean') return resp.Success;
+            if (typeof resp.success === 'boolean') return resp.success;
+            if (typeof resp.Status === 'string') return resp.Status.toLowerCase() === 'success';
+            return false;
+        }
+
+        // ===== Load record (robust parse) =====
         async function loadRecord() {
             const { referenceNumber } = getQueryKeys();
             if (!referenceNumber) {
@@ -377,34 +378,37 @@
                 setSubmitEnabled(false);
                 return;
             }
+
             try {
                 setSubmitEnabled(false);
                 showLoader();
-                // Note: endpoint path kept as /by-visitor-number for backend compatibility   customers/by-reference-number/C-00001
+
                 const res = await fetch(`${domain}/customers/by-reference-number/${encodeURIComponent(referenceNumber)}`, {
                     headers: { "Authorization": `Bearer ${token}` }
                 });
 
-                if (!res.ok) {
+                // read body exactly once
+                let parsed = null;
+                try {
+                    const txt = await res.text();
+                    parsed = txt ? JSON.parse(txt) : null;
+                } catch (e) {
+                    console.warn("Failed to parse GET response as JSON:", e);
+                    parsed = null;
+                } finally {
                     hideLoader();
+                }
+
+                console.debug("GET parsed:", parsed, "status:", res.status);
+
+                if (!parsed || !isApiSuccess(parsed) || !parsed.Data) {
                     document.getElementById('ticketNumber').innerText = `Key Investors Communication: (Not found)`;
                     document.getElementById('userName').innerText = "(Unknown)";
                     setSubmitEnabled(false);
                     return;
                 }
 
-                const r = await res.json();
-                hideLoader();
-
-                if (!r || (!r.Success && !r.success) || !r.Data) {
-                    document.getElementById('ticketNumber').innerText = `Key Investors Communication: (Not found)`;
-                    document.getElementById('userName').innerText = "(Unknown)";
-                    setSubmitEnabled(false);
-                    return;
-                }
-
-                const d = r.Data;
-                // Accept various names returned from server
+                const d = parsed.Data;
                 referenceRecordId = d.RecordId || d.recordId || d.VisitorId || d.visitorId || d.new_keyinvestorscommunicationid || null;
                 linkedEntityType = d.EntityType || d.entityType || null;
 
@@ -434,9 +438,8 @@
             }
         }
 
-        // ===== Submit feedback =====
+        // ===== Submit feedback (robust parse) =====
         async function submitFeedback() {
-            // Validate that all selects have a chosen value
             const q1 = document.getElementById('q1Select').value;
             const q2 = document.getElementById('q2Select').value;
             const q3 = document.getElementById('q3Select').value;
@@ -452,7 +455,6 @@
                 return;
             }
 
-            // Build payload to match server DTO
             const payload = {
                 ReferenceRecordId: referenceRecordId,
                 ContactId: linkedEntityType === 'Contact' ? linkedEntityId : null,
@@ -462,13 +464,12 @@
                 Professionalism: parseInt(q3, 10),
                 SolutionProvided: parseInt(q4, 10),
                 Comments: (document.getElementById('comment').value || '').trim()
-                // OwnerId: optional
             };
 
             try {
                 setSubmitEnabled(false);
                 showLoader();
-                ///keyinvestors/feedback
+
                 const res = await fetch(`${domain}/customers/keyinvestors/feedback`, {
                     method: 'POST',
                     headers: {
@@ -478,27 +479,35 @@
                     body: JSON.stringify(payload)
                 });
 
-                let result = null;
-                try { result = await res.json(); } catch (e) { result = null; }
+                // parse body once
+                let parsed = null;
+                try {
+                    const txt = await res.text();
+                    parsed = txt ? JSON.parse(txt) : null;
+                } catch (e) {
+                    console.warn("Failed to parse POST response as JSON:", e);
+                    parsed = null;
+                } finally {
+                    hideLoader();
+                    setSubmitEnabled(true);
+                }
 
-                hideLoader();
-                setSubmitEnabled(true);
-
-                if (res.status === 409 || (result && ((result.Message || result.message || "").toLowerCase().includes('already')))) {
-                    // already submitted
+                // already submitted detection
+                const msg = (parsed && (parsed.Message || parsed.message || "")).toLowerCase();
+                if (res.status === 409 || (msg && msg.includes("already"))) {
                     document.getElementById('formSection').style.display = 'none';
                     document.getElementById('errorSection').style.display = 'block';
                     return;
                 }
 
-                if (res.ok && result && (result.Success || result.success)) {
+                if (res.ok && parsed && isApiSuccess(parsed)) {
                     document.getElementById('formSection').style.display = 'none';
                     document.getElementById('thankYouSection').style.display = 'block';
                     confetti({ particleCount: 120, spread: 70, origin: { y: 0.6 } });
                     return;
                 }
 
-                const errMsg = (result && (result.Message || result.message)) || `HTTP ${res.status}`;
+                const errMsg = (parsed && (parsed.Message || parsed.message)) || `HTTP ${res.status}`;
                 alert("❌ Error: " + errMsg);
 
             } catch (err) {
@@ -509,7 +518,7 @@
             }
         }
 
-        // ===== Init on DOM ready =====
+        // ===== Init =====
         window.addEventListener('DOMContentLoaded', () => {
             loadRecord();
         });
