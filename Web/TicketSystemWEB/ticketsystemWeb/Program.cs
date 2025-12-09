@@ -27,6 +27,14 @@ app.MapGet("/KITicket", async context =>
         Path.Combine(app.Environment.WebRootPath, "feedback.html")
     );
 });
+app.MapGet("/KICommunication", async context =>
+{
+    context.Response.ContentType = "text/html";
+    await context.Response.SendFileAsync(
+        Path.Combine(app.Environment.WebRootPath, "InvestorsCommunication.html")
+    );
+});
+
 
 // If you still want SPA fallback, uncomment below:
 // app.MapFallbackToFile("index.html");
