@@ -150,18 +150,18 @@
     </style>
 </head>
 <body>
+    <div class="lang-switcher">
+        <select id="languageSwitcher" class="form-select form-select-sm" style="border-radius:20px; width:100%;">
+            <option value="ar" selected>🇸🇦 العربية</option>
+            <option value="en">🇺🇸 English</option>
+        </select>
+    </div>
     <div id="formSection" class="feedback-card" dir="rtl" aria-live="polite">
-        <div class="lang-switcher">
-            <select id="languageSwitcher" class="form-select form-select-sm" style="border-radius:20px; width:100%;">
-                <option value="ar" selected>🇸🇦 العربية</option>
-                <option value="en">🇺🇸 English</option>
-            </select>
-        </div>
 
         <div class="text-center mb-3">
             <h4 id="pageTitle">ملاحظاتك</h4>
             <div class="ticket-number" id="ticketNumber">جاري تحميل بيانات Key Investors Communication...</div>
-            <div class="small-note" id="recordSubtitle">—</div>
+            <!-- <div class="small-note" id="recordSubtitle"></div> -->
         </div>
 
         <!-- Q1 -->
@@ -423,7 +423,7 @@
                 } else {
                     linkedEntityId = null;
                     document.getElementById('userName').innerText = "(Unknown)";
-                    document.getElementById('userSub').innerText = "";
+                    //document.getElementById('userSub').innerText = "";
                 }
 
                 document.getElementById('ticketNumber').innerText = `${referenceNumber}`;
