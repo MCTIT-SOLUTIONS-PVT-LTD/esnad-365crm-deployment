@@ -41,7 +41,7 @@ namespace TicketSystemApi.Controllers
                         "resolveby", "new_description", "new_ticketsubmissionchannel",//changed new_ticketclosuredate to resolveby
                         "new_businessunitid", "createdby", "modifiedby", "ownerid", "customerid",
                         "new_tickettype", "new_mainclassification", "new_subclassificationitem",
-                        "new_isreopened", "new_reopendatetime", "new_reopencount",
+                        "new_isreopened", "new_reopendatetime", "new_reopencount", "new_class",
 
                         // ✅ SLA Success Times
                         "new_assignmentsucceededon", "new_processingsucceededon", "new_solutionverificationsucceededon",
@@ -80,6 +80,20 @@ namespace TicketSystemApi.Controllers
                     ksaStart = new DateTime(ksaNow.Year, ksaNow.Month, 1);
                     query.Criteria.AddCondition("modifiedon", ConditionOperator.OnOrAfter, ksaStart); // Filter by modifiedon
                 }
+                else if (filter.ToLower() == "yesterday")
+                {
+                    var yesterdayStart = ksaNow.Date.AddDays(-1);          // Yesterday 00:00
+                    var yesterdayEnd = ksaNow.Date.AddSeconds(-1);         // Yesterday 23:59:59
+
+                    query.Criteria.AddCondition(
+                        new ConditionExpression(
+                            "modifiedon",
+                            ConditionOperator.Between,
+                            new object[] { yesterdayStart, yesterdayEnd }
+                        )
+                    );
+                }
+
 
                 var result = service.RetrieveMultiple(query);
 
@@ -112,6 +126,7 @@ namespace TicketSystemApi.Controllers
                         CustomerCrNumber = GetCustomerCrNumber(service, e.GetAttributeValue<EntityReference>("customerid")),
                         CreatedOn = ConvertToKsaTime(e.GetAttributeValue<DateTime?>("createdon"))?.ToString("yyyy-MM-dd HH:mm:ss"),
                         TicketType = e.GetAttributeValue<EntityReference>("new_tickettype")?.Name,
+                        MineralClass = e.FormattedValues.Contains("new_class")? e.FormattedValues["new_class"]: null,
                         Category = e.GetAttributeValue<EntityReference>("new_tickettype")?.Name,
                         SubCategory1 = e.GetAttributeValue<EntityReference>("new_mainclassification")?.Name,
                         SubCategory2 = e.GetAttributeValue<EntityReference>("new_subclassificationitem")?.Name,
