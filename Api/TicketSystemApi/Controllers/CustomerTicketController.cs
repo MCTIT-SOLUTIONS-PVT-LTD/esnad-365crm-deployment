@@ -24,7 +24,7 @@ namespace TicketSystemApi.Controllers
         [Route("CustomerTickets")]
         public IHttpActionResult GetAllCustomersWithTickets(
             int page = 1,
-            int pageSize = 100)
+            int pageSize = 50)
         {
             try
             {
@@ -38,81 +38,147 @@ namespace TicketSystemApi.Controllers
 
                 var service = new CrmService().GetService1(username, password);
 
-                var result = new List<CustomerWithTicketsDto>();
+                // ===================== STEP 1: GET TOTAL COUNTS =====================
+                int totalAccounts = GetTotalCount(service, "account");
+                int totalContacts = GetTotalCount(service, "contact");
+                int totalCustomers = totalAccounts + totalContacts;
 
-                // ===================== ACCOUNTS =====================
-                var accountQuery = new QueryExpression("account")
+                // ===================== STEP 2: CALCULATE GLOBAL PAGING =====================
+                int skip = (page - 1) * pageSize;
+                int take = pageSize;
+
+                var customers = new List<CustomerWithTicketsDto>();
+
+                // ===================== STEP 3: FETCH ACCOUNTS =====================
+                if (skip < totalAccounts)
                 {
-                    ColumnSet = new ColumnSet(
-                        "accountid",
-                        "name",
-                        "emailaddress1",
-                        "new_crnumber",
-                        "new_companyrepresentativephonenumber"
-                    )
-                };
+                    int accountPage = (skip / pageSize) + 1;
 
-                var accounts = service.RetrieveMultiple(accountQuery);
-
-                foreach (var acc in accounts.Entities)
-                {
-                    var customer = new CustomerWithTicketsDto
+                    var accountQuery = new QueryExpression("account")
                     {
-                        CustomerId = acc.Id,
+                        ColumnSet = new ColumnSet(
+                            "accountid",
+                            "name",
+                            "emailaddress1",
+                            "new_crnumber",
+                            "new_companyrepresentativephonenumber"
+                        ),
+                        PageInfo = new PagingInfo
+                        {
+                            PageNumber = accountPage,
+                            Count = pageSize
+                        }
+                    };
+
+                    var accountResult = service.RetrieveMultiple(accountQuery);
+
+                    customers.AddRange(accountResult.Entities.Select(a => new CustomerWithTicketsDto
+                    {
+                        CustomerId = a.Id,
                         CustomerType = "Account",
-                        Name = acc.GetAttributeValue<string>("name"),
-                        Email = acc.GetAttributeValue<string>("emailaddress1"),
-                        MobileOrPhone = acc.GetAttributeValue<string>("new_companyrepresentativephonenumber"),
-                        CrNumber = acc.GetAttributeValue<string>("new_crnumber"),
-                        Tickets = GetTickets(service, acc.Id)
-                    };
+                        Name = a.GetAttributeValue<string>("name"),
+                        Email = a.GetAttributeValue<string>("emailaddress1"),
+                        MobileOrPhone = a.GetAttributeValue<string>("new_companyrepresentativephonenumber"),
+                        CrNumber = a.GetAttributeValue<string>("new_crnumber"),
+                        Tickets = new List<TicketSummaryDto>()
+                    }));
 
-                    result.Add(customer);
+                    take -= customers.Count;
                 }
 
-                // ===================== CONTACTS =====================
-                var contactQuery = new QueryExpression("contact")
+                // ===================== STEP 4: FETCH CONTACTS =====================
+                if (take > 0)
                 {
-                    ColumnSet = new ColumnSet(
-                        "contactid",
-                        "fullname",
-                        "emailaddress1",
-                        "mobilephone"
-                    )
+                    int contactSkip = Math.Max(0, skip - totalAccounts);
+                    int contactPage = (contactSkip / pageSize) + 1;
+
+                    var contactQuery = new QueryExpression("contact")
+                    {
+                        ColumnSet = new ColumnSet(
+                            "contactid",
+                            "fullname",
+                            "emailaddress1",
+                            "mobilephone"
+                        ),
+                        PageInfo = new PagingInfo
+                        {
+                            PageNumber = contactPage,
+                            Count = take
+                        }
+                    };
+
+                    var contactResult = service.RetrieveMultiple(contactQuery);
+
+                    customers.AddRange(contactResult.Entities.Select(c => new CustomerWithTicketsDto
+                    {
+                        CustomerId = c.Id,
+                        CustomerType = "Contact",
+                        Name = c.GetAttributeValue<string>("fullname"),
+                        Email = c.GetAttributeValue<string>("emailaddress1"),
+                        MobileOrPhone = c.GetAttributeValue<string>("mobilephone"),
+                        CrNumber = null,
+                        Tickets = new List<TicketSummaryDto>()
+                    }));
+                }
+
+                if (!customers.Any())
+                {
+                    return Ok(new
+                    {
+                        Page = page,
+                        PageSize = pageSize,
+                        //TotalRecords = totalCustomers,
+                        Records = customers
+                    });
+                }
+
+                // ===================== STEP 5: FETCH ALL TICKETS (ONE CALL) =====================
+                var customerIds = customers.Select(c => c.CustomerId).ToArray();
+
+                var ticketQuery = new QueryExpression("incident")
+                {
+                    ColumnSet = new ColumnSet("ticketnumber", "title", "customerid"),
+                    Criteria = new FilterExpression
+                    {
+                        Conditions =
+                        {
+                            new ConditionExpression(
+                                "customerid",
+                                ConditionOperator.In,
+                                customerIds
+                            )
+                        }
+                    }
                 };
 
-                var contacts = service.RetrieveMultiple(contactQuery);
+                var tickets = service.RetrieveMultiple(ticketQuery).Entities;
 
-                foreach (var con in contacts.Entities)
+                // ===================== STEP 6: MAP TICKETS =====================
+                var ticketLookup = tickets
+                    .Where(t => t.Contains("customerid"))
+                    .GroupBy(t => t.GetAttributeValue<EntityReference>("customerid").Id)
+                    .ToDictionary(
+                        g => g.Key,
+                        g => g.Select(t => new TicketSummaryDto
+                        {
+                            TicketNumber = t.GetAttributeValue<string>("ticketnumber"),
+                            Title = t.GetAttributeValue<string>("title")
+                        }).ToList()
+                    );
+
+                foreach (var customer in customers)
                 {
-                    var customer = new CustomerWithTicketsDto
-                    {
-                        CustomerId = con.Id,
-                        CustomerType = "Contact",
-                        Name = con.GetAttributeValue<string>("fullname"),
-                        Email = con.GetAttributeValue<string>("emailaddress1"),
-                        MobileOrPhone = con.GetAttributeValue<string>("mobilephone"),
-                        CrNumber = null,
-                        Tickets = GetTickets(service, con.Id)
-                    };
-
-                    result.Add(customer);
+                    if (ticketLookup.ContainsKey(customer.CustomerId))
+                        customer.Tickets = ticketLookup[customer.CustomerId];
                 }
 
-                // ===================== PAGINATION =====================
-                var totalRecords = result.Count;
-
-                var pagedRecords = result
-                    .Skip((page - 1) * pageSize)
-                    .Take(pageSize)
-                    .ToList();
-
+                // ===================== RESPONSE =====================
                 return Ok(new
                 {
                     Page = page,
                     PageSize = pageSize,
-                    TotalRecords = totalRecords,
-                    Records = pagedRecords
+                    TotalRecords = totalCustomers,
+                    Records = customers
                 });
             }
             catch (Exception ex)
@@ -123,37 +189,16 @@ namespace TicketSystemApi.Controllers
             }
         }
 
-        // ===================== HELPER =====================
-        private List<TicketSummaryDto> GetTickets(
-            IOrganizationService service,
-            Guid customerId)
+        // ===================== TOTAL COUNT HELPER =====================
+        private int GetTotalCount(IOrganizationService service, string entityName)
         {
-            var tickets = new List<TicketSummaryDto>();
-
-            var qe = new QueryExpression("incident")
+            var qe = new QueryExpression(entityName)
             {
-                ColumnSet = new ColumnSet("ticketnumber", "title"),
-                Criteria = new FilterExpression()
+                ColumnSet = new ColumnSet(false),
+                PageInfo = new PagingInfo { PageNumber = 1, Count = 1 }
             };
 
-            qe.Criteria.AddCondition(
-                "customerid",
-                ConditionOperator.Equal,
-                customerId
-            );
-
-            var incidents = service.RetrieveMultiple(qe);
-
-            foreach (var i in incidents.Entities)
-            {
-                tickets.Add(new TicketSummaryDto
-                {
-                    TicketNumber = i.GetAttributeValue<string>("ticketnumber"),
-                    Title = i.GetAttributeValue<string>("title")
-                });
-            }
-
-            return tickets;
+            return service.RetrieveMultiple(qe).TotalRecordCount;
         }
     }
 }
