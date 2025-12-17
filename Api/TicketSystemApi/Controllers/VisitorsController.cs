@@ -121,30 +121,37 @@ namespace TicketSystemApi.Controllers
                     // ---------- SAFE SURVEY READ ----------
                     int? serviceSatisfaction = null;
                     int? staffEfficiency = null;
-                    List<int> visitReasonValues = null;
+                   // List<int> visitReasonValues = null;
                     string visitorComments = null;
 
+                    // Service satisfaction
                     if (v.Attributes.TryGetValue(
                         "survey.new_howsatisfiedareyouwiththeserviceprovideda",
-                        out var ssObj) && ssObj is AliasedValue ssVal && ssVal.Value is int)
+                        out var ssObj) && ssObj is AliasedValue ssVal && ssVal.Value != null)
                     {
-                        serviceSatisfaction = (int)ssVal.Value;
+                        if (ssVal.Value is OptionSetValue osv)
+                            serviceSatisfaction = osv.Value;
+                        else
+                            serviceSatisfaction = Convert.ToInt32(ssVal.Value);
                     }
 
+                    // Staff efficiency
                     if (v.Attributes.TryGetValue(
                         "survey.new_howsatisfiedareyouwiththeefficiencyofthes",
-                        out var seObj) && seObj is AliasedValue seVal && seVal.Value is int)
+                        out var seObj) && seObj is AliasedValue seVal && seVal.Value != null)
                     {
-                        staffEfficiency = (int)seVal.Value;
+                        if (seVal.Value is OptionSetValue osv)
+                            staffEfficiency = osv.Value;
+                        else
+                            staffEfficiency = Convert.ToInt32(seVal.Value);
                     }
-
-                    if (v.Attributes.TryGetValue(
-                        "survey.new_helpusbetterunderstandwhyyouchosetovisitt",
-                        out var vrObj) && vrObj is AliasedValue vrVal &&
-                        vrVal.Value is OptionSetValueCollection col)
-                    {
-                        visitReasonValues = col.Select(o => o.Value).ToList();
-                    }
+                    //if (v.Attributes.TryGetValue(
+                    //   "survey.new_helpusbetterunderstandwhyyouchosetovisitt",
+                    //   out var vrObj) && vrObj is AliasedValue vrVal &&
+                    //   vrVal.Value is OptionSetValueCollection col)
+                    //{
+                    //   visitReasonValues = col.Select(o => o.Value).ToList();
+                    //}
 
                     if (v.Attributes.TryGetValue(
                         "survey.new_youropinionmatterstouspleaseshareyourcom",
@@ -186,8 +193,8 @@ namespace TicketSystemApi.Controllers
 
                         ServiceSatisfaction = serviceSatisfaction,
                         StaffEfficiency = staffEfficiency,
-                        VisitReasonValues = visitReasonValues,
-                        VisitReasonLabels = v.FormattedValues
+                       // VisitReasonValues = visitReasonValues,
+                        VisitReason = v.FormattedValues
                             .Where(f => f.Key.StartsWith(
                                 "survey.new_helpusbetterunderstandwhyyouchosetovisitt"))
                             .Select(f => f.Value)
