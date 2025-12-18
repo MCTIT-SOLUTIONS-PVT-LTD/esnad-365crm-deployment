@@ -288,12 +288,16 @@
 
     <script>
         // ✅ Replace these at build time in GitHub Actions for PROD
-        const domain = window.ENV?.DOMAIN || "https://api.crm-esnad.com";
-        const token = window.ENV?.TOKEN || "Kh4JBCqfGKYwwhSaJtbu95kxhO5LmLfXO1UGM6falBaX3sa0LvXeBQOD29SiwZoG";
+       // const domain = window.ENV?.DOMAIN || "https://api.crm-esnad.com";
+        //const token = window.ENV?.TOKEN || "Kh4JBCqfGKYwwhSaJtbu95kxhO5LmLfXO1UGM6falBaX3sa0LvXeBQOD29SiwZoG";
 
         // ✅ Replace these at build time in GitHub Actions For Dev
         //const domain = window.ENV?.DOMAIN || "https://devapi.crm-esnad.com";
         //const token = window.ENV?.TOKEN || "Kh4JBCqfGKYwwhSaJtbu95kxhO5LmLfXO1UGM6falBaX3sa0LvXeBQOD29SiwZoG";
+
+        // ✅ Replace these at build time in GitHub Actions
+        const domain = window.ENV?.DOMAIN || "__DOMAIN__";
+        const token = window.ENV?.TOKEN || "__API_TOKEN__";
 
         console.log("domain := " + domain);
         console.log("token := " + token);
@@ -315,17 +319,16 @@
         <h4 id="formTitle">Your Feedback</h4>
         <div class="ticket-number" id="ticketNumber">Loading ticket...</div>
 
-        <label id="starLabel" class="form-label mb-0" style="display:block;">
-            How satisfied are you with how the ticket was handled? (Scale 1–5)
-        </label>
-
-        <div class="star-rating mt-0" id="starContainer">
-            <span class="star" data-value="1">★</span>
-            <span class="star" data-value="2">★</span>
-            <span class="star" data-value="3">★</span>
-            <span class="star" data-value="4">★</span>
-            <span class="star" data-value="5">★</span>
-        </div>
+        <!-- <label id="starLabel" class="form-label mb-0" style="display:block;"> -->
+        <!-- How satisfied are you with how the ticket was handled? (Scale 1–5) -->
+        <!-- </label> -->
+        <!-- <div class="star-rating mt-0" id="starContainer"> -->
+        <!-- <span class="star" data-value="1">★</span> -->
+        <!-- <span class="star" data-value="2">★</span> -->
+        <!-- <span class="star" data-value="3">★</span> -->
+        <!-- <span class="star" data-value="4">★</span> -->
+        <!-- <span class="star" data-value="5">★</span> -->
+        <!-- </div> -->
 
         <div class="mb-3 text-start" style="margin-top:8px;">
             <label class="form-label" id="lbl_overall">Overall, how satisfied are you with your experience?</label>
@@ -441,7 +444,7 @@
                 thankYouText: "Your feedback has been submitted successfully.",
                 alreadySubmittedTitle: "Feedback Already Submitted",
                 alreadySubmittedText: "You have already provided feedback for this ticket. Thank you!",
-                starLabel: "How satisfied are you with how the ticket was handled? (Scale 1–5)",
+                //starLabel: "How satisfied are you with how the ticket was handled? (Scale 1–5)",
                 q_overall_label: "Overall, how satisfied are you with your experience?",
                 q_response_time_label: "How satisfied are you with the response time of the team?",
                 q_time_taken_label: "How satisfied are you with the time taken to resolve your request?",
@@ -449,7 +452,8 @@
                 q_relationship_label: "How satisfied are you with the Relationship Manager?",
                 q_solution_label: "How satisfied are you with the solution provided to you?",
                 q_comments_label: "Do you have any other suggestions and/or comments?",
-                loadingTicket: "Loading ticket..."
+                //loadingTicket: "Loading ticket..."
+                loadingTicket: "جارٍ تحميل التذكرة..."
             },
             ar: {
                 title: "ملاحظاتك",
@@ -460,7 +464,7 @@
                 thankYouText: "تم إرسال ملاحظاتك بنجاح.",
                 alreadySubmittedTitle: "تم إرسال الملاحظات مسبقًا",
                 alreadySubmittedText: "لقد قدمت ملاحظاتك بالفعل لهذه التذكرة. شكرًا لك!",
-                starLabel: "ما مدى رضاك عن معالجة التذكرة؟ (مقياس 5-1)",
+                //starLabel: "ما مدى رضاك عن معالجة التذكرة؟ (مقياس 5-1)",
                 q_overall_label: "بشكل عام، ما مدى رضاك عن تجربتك؟",
                 q_response_time_label: "ما مدى رضاك عن وقت استجابة الفريق؟",
                 q_time_taken_label: "ما مدى رضاك عن الوقت المستغرق لحل طلبك؟",
@@ -508,7 +512,7 @@
             document.getElementById("thankYouText").innerText = t.thankYouText;
             document.getElementById("errorTitle").innerText = t.alreadySubmittedTitle;
             document.getElementById("errorText").innerText = t.alreadySubmittedText;
-            document.getElementById("starLabel").innerText = t.starLabel;
+            //document.getElementById("starLabel").innerText = t.starLabel;
             document.getElementById("ticketNumber").innerText = t.loadingTicket;
             document.body.dir = lang === "ar" ? "rtl" : "ltr";
             fillOptions(lang);
