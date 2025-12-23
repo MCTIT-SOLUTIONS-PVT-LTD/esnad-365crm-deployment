@@ -87,7 +87,7 @@ namespace TicketSystemApi.Controllers
 
                     query.Criteria.AddCondition(
                         new ConditionExpression(
-                            "modifiedon",
+                            "CreatedOn",
                             ConditionOperator.Between,
                             new object[] { yesterdayStart, yesterdayEnd }
                         )
