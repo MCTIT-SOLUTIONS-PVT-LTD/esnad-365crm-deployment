@@ -136,7 +136,7 @@ namespace TicketSystemApi.Controllers
                         TicketChannel = e.FormattedValues.Contains("new_ticketsubmissionchannel") ? e.FormattedValues["new_ticketsubmissionchannel"] : null,
 
                         //TotalResolutionTime = CalculateDurationFormatted(e),
-                        TotalTicketDuration = CalculateDurationFormatted(e),
+                        TotalTicketDuration = CalculateDurationFormatted(e),//remaining
 
                         Description = e.GetAttributeValue<string>("new_description"),
                         ModifiedBy = e.GetAttributeValue<EntityReference>("modifiedby")?.Name,
