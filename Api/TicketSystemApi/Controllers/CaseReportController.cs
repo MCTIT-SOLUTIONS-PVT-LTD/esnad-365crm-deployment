@@ -166,8 +166,8 @@ namespace TicketSystemApi.Controllers
                     Page = page,
                     PageSize = effectivePageSize,
                     Count = currentPageCount,
-                    OverallSystemRecords = overallSystemRecords,
-                    FilteredTotalRecords = filteredTotalRecords,
+                    TotalTickets = overallSystemRecords,
+                    FilteredTotalTickets = filteredTotalRecords,
                     TotalPages = totalPages,
                     Records = records
                 });
